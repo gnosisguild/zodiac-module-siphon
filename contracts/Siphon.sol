@@ -5,10 +5,6 @@ import "@gnosis.pm/zodiac/contracts/core/Module.sol";
 import "./DebtPosition.sol";
 import "./LiquidityPosition.sol";
 
-struct Couple {
-    LiquidityPosition lp;
-    DebtPosition dp;
-}
 
 contract Siphon is Module {
     mapping(address => bool) public dps;
@@ -75,7 +71,7 @@ contract Siphon is Module {
         delete lps[lp];
     }
 
-    // missing openzeppelin
+    // missing openzeppelin ACL role for payDebt
     function payDebt(address _dp, address _lp) public {
         if (dps[_dp] != true) {
             revert DebtPositionNotEnabled();
