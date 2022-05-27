@@ -7,7 +7,7 @@ import "hardhat-contract-sizer";
 import dotenv from "dotenv";
 import type { HttpNetworkUserConfig } from "hardhat/types";
 import yargs from "yargs";
-import "./src/tasks/setup";
+// import "./src/tasks/setup";
 import { HardhatUserConfig } from "hardhat/config";
 
 const argv = yargs
