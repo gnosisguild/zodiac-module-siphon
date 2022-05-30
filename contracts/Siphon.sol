@@ -2,9 +2,8 @@
 pragma solidity ^0.8.6;
 
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
-import "./DebtPosition.sol";
-import "./LiquidityPosition.sol";
-
+import "./IDebtPosition.sol";
+import "./ILiquidityPosition.sol";
 
 contract Siphon is Module {
     mapping(address => bool) public dps;
@@ -81,8 +80,8 @@ contract Siphon is Module {
             revert LiquidityPositionNotEnabled();
         }
 
-        DebtPosition dp = DebtPosition(_dp);
-        LiquidityPosition lp = LiquidityPosition(_lp);
+        IDebtPosition dp = IDebtPosition(_dp);
+        ILiquidityPosition lp = ILiquidityPosition(_lp);
 
         uint256 triggerRatio = dp.ratioTrigger();
         if (triggerRatio == 0) {
