@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity ^0.8.6;
 
-import "../../DebtPosition.sol";
+import "../../IDebtPosition.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 
-interface CDPManaggerLike {
+interface ICDPManagger {
     function ilks(uint256 vault) external view returns (bytes32 ilk);
 
     function urns(uint256 vault) external view returns (address urnHandler);
@@ -12,14 +12,14 @@ interface CDPManaggerLike {
     function vat() external view returns (address vat);
 }
 
-interface DSProxyLike {
+interface IDSProxy {
     function execute(address _target, bytes memory _data)
         external
         payable
         returns (bytes32 response);
 }
 
-interface DSSProxyActionsLike {
+interface IDSSProxyActions {
     function wipe(
         address manager,
         address daiJoin,
@@ -28,11 +28,11 @@ interface DSSProxyActionsLike {
     ) external;
 }
 
-interface SpotterLike {
+interface ISpotter {
     function ilks(bytes32 ilk) external view returns (address pip, uint256 mat);
 }
 
-interface VatLike {
+interface IVat {
     function urns(bytes32 ilk, address urnHandler)
         external
         view
@@ -50,7 +50,7 @@ interface VatLike {
         );
 }
 
-contract DPMakerVault is DebtPosition, FactoryFriendly {
+contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     event SetAssetCollateral(address assetCollateral);
     event SetAssetDebt(address assetDebt);
     event SetcdpManager(address cdpManager);
@@ -61,8 +61,8 @@ contract DPMakerVault is DebtPosition, FactoryFriendly {
     event SetRatioTrigger(uint256 ratioTrigger);
     event SetSpotter(address spotter);
 
-    address public assetCollateral;
-    address public assetDebt;
+    address public override assetCollateral;
+    address public override assetDebt;
     address public cdpManager;
     address public daiJoin;
     address public dsProxy;
@@ -73,8 +73,8 @@ contract DPMakerVault is DebtPosition, FactoryFriendly {
 
     bytes32 public ilk;
 
-    uint256 public ratioTarget;
-    uint256 public ratioTrigger;
+    uint256 public override ratioTarget;
+    uint256 public override ratioTrigger;
     uint256 public vault;
 
     function setUp() public {}
@@ -91,9 +91,9 @@ contract DPMakerVault is DebtPosition, FactoryFriendly {
 
     function setcdpManager(address _cdpManager) external onlyOwner {
         cdpManager = _cdpManager;
-        vat = CDPManaggerLike(cdpManager).vat();
-        urnHandler = CDPManaggerLike(cdpManager).urns(vault);
-        ilk = CDPManaggerLike(cdpManager).ilks(vault);
+        vat = ICDPManagger(cdpManager).vat();
+        urnHandler = ICDPManagger(cdpManager).urns(vault);
+        ilk = ICDPManagger(cdpManager).ilks(vault);
         emit SetcdpManager(cdpManager);
     }
 
@@ -112,12 +112,12 @@ contract DPMakerVault is DebtPosition, FactoryFriendly {
         emit SetdsProxyActions(dsProxyActions);
     }
 
-    function setRatioTarget(uint256 _ratio) external onlyOwner {
+    function setRatioTarget(uint256 _ratio) external override onlyOwner {
         ratioTarget = _ratio;
         emit SetRatioTarget(ratioTarget);
     }
 
-    function setRatioTrigger(uint256 _ratio) external onlyOwner {
+    function setRatioTrigger(uint256 _ratio) external override onlyOwner {
         ratioTrigger = _ratio;
         emit SetRatioTrigger(ratioTrigger);
     }
@@ -127,7 +127,7 @@ contract DPMakerVault is DebtPosition, FactoryFriendly {
         emit SetSpotter(spotter);
     }
 
-    function ratio() external view returns (uint256) {
+    function ratio() external view override returns (uint256) {
         // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
         // or
         // Collateralization Ratio = collateral in vault * spot price * liquidation ratio / (dait debt)
@@ -136,15 +136,16 @@ contract DPMakerVault is DebtPosition, FactoryFriendly {
         uint256 mat;
         uint256 rate;
         uint256 spot;
-        (ink, art) = VatLike(vat).urns(ilk, urnHandler);
-        (, rate, spot, , ) = VatLike(vat).ilks(ilk);
-        (, mat) = SpotterLike(spotter).ilks(ilk);
+        (ink, art) = IVat(vat).urns(ilk, urnHandler);
+        (, rate, spot, , ) = IVat(vat).ilks(ilk);
+        (, mat) = ISpotter(spotter).ilks(ilk);
         return (ink * spot * mat) / (art * rate);
     }
 
     function readDeltas(uint256 toRatio)
         external
         pure
+        override
         returns (uint256, uint256)
     {
         return (toRatio - ratioTrigger, toRatio - ratioTarget);
@@ -153,6 +154,7 @@ contract DPMakerVault is DebtPosition, FactoryFriendly {
     function paymentInstructions(uint256 amount)
         external
         view
+        override
         returns (
             address to,
             uint256 value,

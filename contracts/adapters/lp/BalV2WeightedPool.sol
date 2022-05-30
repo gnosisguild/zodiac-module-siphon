@@ -4,7 +4,7 @@ pragma solidity ^0.8.6;
 import "@prb/math/contracts/PRBMathUD60x18.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
-import "../../LiquidityPosition.sol";
+import "../../ILiquidityPosition.sol";
 
 enum PoolExitKind {
     EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
@@ -12,7 +12,7 @@ enum PoolExitKind {
     BPT_IN_FOR_EXACT_TOKENS_OUT
 }
 
-interface VaultLike {
+interface IVault {
     function getPoolTokens(bytes32 poolId)
         external
         view
@@ -37,7 +37,7 @@ interface VaultLike {
     }
 }
 
-abstract contract BalV2WeightedPool is LiquidityPosition, FactoryFriendly {
+abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
     using PRBMathUD60x18 for uint256;
 
     event SetAsset(address asset);
@@ -210,7 +210,7 @@ abstract contract BalV2WeightedPool is LiquidityPosition, FactoryFriendly {
             address[] memory tokens,
             uint256[] memory balances,
             uint256 lastChangedBlock
-        ) = VaultLike(vault).getPoolTokens(poolId);
+        ) = IVault(vault).getPoolTokens(poolId);
 
         return balances[findAssetIndex(tokens)];
     }
@@ -229,13 +229,13 @@ abstract contract BalV2WeightedPool is LiquidityPosition, FactoryFriendly {
     }
 
     function getPoolTokens() public view returns (address[] memory) {
-        (address[] memory tokens, , ) = VaultLike(vault).getPoolTokens(poolId);
+        (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
 
         return tokens;
     }
 
     function ensureBlockLock() private view {
-        (, , uint256 lastChangedBlock) = VaultLike(vault).getPoolTokens(poolId);
+        (, , uint256 lastChangedBlock) = IVault(vault).getPoolTokens(poolId);
 
         require(block.number > lastChangedBlock, "Pool Write 2 Fresh");
     }
