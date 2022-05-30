@@ -87,8 +87,8 @@ abstract contract BalV2WeightedPool is LiquidityPosition, FactoryFriendly {
 
     function balance() external view returns (uint256) {
         ensureBlockLock();
-        (uint256 fromUnstaked, uint256 fromStaked) = _balance();
-        return fromUnstaked + fromStaked;
+        (uint256 unstakedAmoutOut, uint256 stakedAmoutOut) = balancesOut();
+        return unstakedAmoutOut + stakedAmoutOut;
     }
 
     function withdrawalInstructions(uint256 amount)
@@ -103,7 +103,7 @@ abstract contract BalV2WeightedPool is LiquidityPosition, FactoryFriendly {
         ensureBlockLock();
         uint256 amountOut = amount;
         uint256 requiredAmountIn = inFromOut(amountOut);
-        (uint256 unstakedAmountIn, uint256 stakedAmountIn) = bptBalances();
+        (uint256 unstakedAmountIn, uint256 stakedAmountIn) = balancesIn();
 
         if (requiredAmountIn <= unstakedAmountIn) {
             return encodeExit(requiredAmountIn, amountOut);
@@ -115,15 +115,24 @@ abstract contract BalV2WeightedPool is LiquidityPosition, FactoryFriendly {
         }
     }
 
-    function _balance()
-        private
+    function balancesIn()
+        internal
         view
-        returns (uint256 balanceUnstaked, uint256 balanceStaked)
+        returns (uint256 unstakedAmountIn, uint256 stakedAmountIn)
     {
-        (uint256 unstakedAmountIn, uint256 stakedAmountIn) = bptBalances();
+        unstakedAmountIn = IERC20(pool).balanceOf(investor);
+        stakedAmountIn = IERC20(gauge).balanceOf(investor);
+    }
 
-        balanceUnstaked = outFromIn(unstakedAmountIn);
-        balanceStaked = outFromIn(stakedAmountIn);
+    function balancesOut()
+        internal
+        view
+        returns (uint256 unstakedAmountOut, uint256 stakedAmountOut)
+    {
+        (uint256 unstakedAmountIn, uint256 stakedAmountIn) = balancesIn();
+
+        unstakedAmountOut = outFromIn(unstakedAmountIn);
+        stakedAmountOut = outFromIn(stakedAmountIn);
     }
 
     function outFromIn(uint256 amountIn)
@@ -194,15 +203,6 @@ abstract contract BalV2WeightedPool is LiquidityPosition, FactoryFriendly {
             //     userData: abi.encode(PoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, amountIn)
             // )
         );
-    }
-
-    function bptBalances()
-        public
-        view
-        returns (uint256 unstakedBPT, uint256 stakedBPT)
-    {
-        unstakedBPT = IERC20(pool).balanceOf(investor);
-        stakedBPT = IERC20(gauge).balanceOf(investor);
     }
 
     function findAssetInPool() public view returns (uint256) {
