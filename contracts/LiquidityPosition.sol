@@ -6,7 +6,7 @@ interface LiquidityPosition {
 
     function balance() external view returns (uint256);
 
-    function withdrawInstructions(uint256 amount)
+    function withdrawalInstructions(uint256 amount)
         external
         view
         returns (
