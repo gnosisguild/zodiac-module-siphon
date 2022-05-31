@@ -182,16 +182,23 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         );
     }
 
+    // @dev Sets the target callateralization ratio for the vault.
+    // @param _ratio Target collateralization ratio for the vault.
+    // @notice Can only be called by owner.
     function setRatioTarget(uint256 _ratio) external override onlyOwner {
         ratioTarget = _ratio;
         emit SetRatioTarget(ratioTarget);
     }
 
+    // @dev Sets the collateralization ratio below which debt repayment can be triggered.
+    // @param _ratio The ratio below which debt repayment can be triggered.
+    // @notice Can only be called by owner.
     function setRatioTrigger(uint256 _ratio) external override onlyOwner {
         ratioTrigger = _ratio;
         emit SetRatioTrigger(ratioTrigger);
     }
 
+    // @dev Returns the current collateralization ratio of the vault.
     function ratio() external view override returns (uint256) {
         // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
         // or
@@ -207,15 +214,25 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         return (ink * spot * mat) / (art * rate);
     }
 
+    // ToDo: figure out if this is necessary. If so, fix documentation.
+    // @dev I'm honestly not sure yet...
+    // @param toRatio Presumably the ratio to which you must compute the deltas
+    // @return deltaToTarget Delta from toRatio to ratioTarget
+    // @return deltaToTrigger Delta from toRatio to ratioTrigger
     function readDeltas(uint256 toRatio)
         external
         view
         override
-        returns (uint256, uint256)
+        returns (uint256 deltaToTarget, uint256 deltaToTrigger)
     {
         return (toRatio - ratioTrigger, toRatio - ratioTarget);
     }
 
+    // @dev Returns the call data to repay debt on the vault.
+    // @param amount The amount of tokens to repay to the vault.
+    // @return to Address that the call should be to.
+    // @return value Native token value attached to the call.
+    // @return data Call data for the call.
     function paymentInstructions(uint256 amount)
         external
         view
