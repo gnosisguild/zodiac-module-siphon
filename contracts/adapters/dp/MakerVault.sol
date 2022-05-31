@@ -51,15 +51,24 @@ interface IVat {
 }
 
 contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
-    event SetAssetCollateral(address assetCollateral);
-    event SetAssetDebt(address assetDebt);
-    event SetcdpManager(address cdpManager);
-    event SetDaiJoin(address daiJoin);
-    event SetdsProxy(address dsProxy);
-    event SetdsProxyActions(address dsProxyActions);
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
-    event SetSpotter(address spotter);
+    event AdapterSetuP(
+        address owner,
+        address assetCollateral,
+        address assetDebt,
+        address cdpManager,
+        address daiJoin,
+        address dsProxy,
+        address dsProxyActions,
+        address spotter,
+        address urnHandler,
+        address vat,
+        bytes32 ilk,
+        uint256 ratioTarget,
+        uint256 ratioTrigger,
+        uint256 vault
+    );
 
     address public override assetCollateral;
     address public override assetDebt;
@@ -77,39 +86,71 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     uint256 public override ratioTrigger;
     uint256 public vault;
 
-    function setUp() public {}
+    function setUp(bytes memory initParams) public override {
+        (
+            address _owner,
+            address _assetCollateral,
+            address _assetDebt,
+            address _cdpManager,
+            address _daiJoin,
+            address _dsProxy,
+            address _dsProxyActions,
+            address _spotter,
+            uint256 _ratioTarget,
+            uint256 _ratioTrigger,
+            uint256 _vault
+        ) = abi.decode(
+                initParams,
+                (
+                    address,
+                    address,
+                    address,
+                    address,
+                    address,
+                    address,
+                    address,
+                    address,
+                    uint256,
+                    uint256,
+                    uint256
+                )
+            );
+        __Ownable_init();
 
-    function setAssetCollateral(address asset) external onlyOwner {
-        assetCollateral = asset;
-        emit SetAssetCollateral(assetCollateral);
-    }
-
-    function setAssetDebt(address asset) external onlyOwner {
-        assetDebt = asset;
-        emit SetAssetDebt(assetDebt);
-    }
-
-    function setcdpManager(address _cdpManager) external onlyOwner {
+        assetCollateral = _assetCollateral;
+        assetDebt = _assetDebt;
         cdpManager = _cdpManager;
-        vat = ICDPManagger(cdpManager).vat();
-        urnHandler = ICDPManagger(cdpManager).urns(vault);
-        ilk = ICDPManagger(cdpManager).ilks(vault);
-        emit SetcdpManager(cdpManager);
-    }
-
-    function setDaiJoin(address _daiJoin) external onlyOwner {
         daiJoin = _daiJoin;
-        emit SetDaiJoin(daiJoin);
-    }
-
-    function setdsProxy(address _dsProxy) external onlyOwner {
         dsProxy = _dsProxy;
-        emit SetdsProxy(dsProxy);
-    }
-
-    function setdsProxyActions(address _dsProxyActions) external onlyOwner {
         dsProxyActions = _dsProxyActions;
-        emit SetdsProxyActions(dsProxyActions);
+        spotter = _spotter;
+
+        ratioTarget = _ratioTarget;
+        ratioTrigger = _ratioTrigger;
+        vault = _vault;
+
+        ilk = ICDPManagger(cdpManager).ilks(vault);
+        urnHandler = ICDPManagger(cdpManager).urns(vault);
+        vat = ICDPManagger(cdpManager).vat();
+
+        transferOwnership(_owner);
+
+        emit AdapterSetuP(
+            owner(),
+            assetCollateral,
+            assetDebt,
+            cdpManager,
+            daiJoin,
+            dsProxy,
+            dsProxyActions,
+            spotter,
+            urnHandler,
+            vat,
+            ilk,
+            ratioTarget,
+            ratioTrigger,
+            vault
+        );
     }
 
     function setRatioTarget(uint256 _ratio) external override onlyOwner {
@@ -120,11 +161,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     function setRatioTrigger(uint256 _ratio) external override onlyOwner {
         ratioTrigger = _ratio;
         emit SetRatioTrigger(ratioTrigger);
-    }
-
-    function setSpotter(address _spotter) external onlyOwner {
-        spotter = _spotter;
-        emit SetSpotter(spotter);
     }
 
     function ratio() external view override returns (uint256) {
@@ -144,7 +180,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     function readDeltas(uint256 toRatio)
         external
-        pure
+        view
         override
         returns (uint256, uint256)
     {
