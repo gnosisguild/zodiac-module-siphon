@@ -86,6 +86,35 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     uint256 public override ratioTrigger;
     uint256 public vault;
 
+    constructor(
+        address _owner,
+        address _assetCollateral,
+        address _assetDebt,
+        address _cdpManager,
+        address _daiJoin,
+        address _dsProxy,
+        address _dsProxyActions,
+        address _spotter,
+        uint256 _ratioTarget,
+        uint256 _ratioTrigger,
+        uint256 _vault
+    ) {
+        bytes memory initParams = abi.encode(
+            _owner,
+            _assetCollateral,
+            _assetDebt,
+            _cdpManager,
+            _daiJoin,
+            _dsProxy,
+            _dsProxyActions,
+            _spotter,
+            _ratioTarget,
+            _ratioTrigger,
+            _vault
+        );
+        setUp(initParams);
+    }
+
     function setUp(bytes memory initParams) public override {
         (
             address _owner,
