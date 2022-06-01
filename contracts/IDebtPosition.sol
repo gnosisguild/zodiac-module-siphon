@@ -16,10 +16,7 @@ interface IDebtPosition {
 
     function ratioTarget() external view returns (uint256);
 
-    function readDeltas(uint256 toRatio)
-        external
-        view
-        returns (uint256, uint256);
+    function readDelta() external view returns (uint256 amount);
 
     function paymentInstructions(uint256 amount)
         external

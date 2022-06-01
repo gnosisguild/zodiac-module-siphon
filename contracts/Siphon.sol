@@ -102,7 +102,7 @@ contract Siphon is Module {
             revert UnsuitableLiquidityForPayment();
         }
 
-        (, uint256 amount) = dp.readDeltas(targetRatio);
+        (, uint256 amount) = dp.readDelta();
 
         if (lp.balance() < amount) {
             revert NotEnoughLiquidityForPayment();
