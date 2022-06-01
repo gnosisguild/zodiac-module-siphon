@@ -94,7 +94,7 @@ contract Siphon is Module {
         }
 
         uint256 targetRatio = dp.ratioTarget();
-        if (targetRatio <= triggerRatio) {
+        if (targetRatio < triggerRatio) {
             revert TargetRatioNotSet();
         }
 
