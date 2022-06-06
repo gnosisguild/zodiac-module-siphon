@@ -102,7 +102,7 @@ contract Siphon is Module {
             revert UnsuitableLiquidityForPayment();
         }
 
-        (, uint256 amount) = dp.readDelta();
+        uint256 amount = dp.readDelta();
 
         if (lp.balance() < amount) {
             revert NotEnoughLiquidityForPayment();
@@ -112,7 +112,7 @@ contract Siphon is Module {
         uint256 value;
         bytes memory data;
 
-        (to, value, data) = lp.withdrawInstructions(amount);
+        (to, value, data) = lp.withdrawalInstructions(amount);
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert WithdrawalFailed();
         }

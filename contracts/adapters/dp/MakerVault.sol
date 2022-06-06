@@ -50,7 +50,8 @@ interface IVat {
         );
 }
 
-contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
+// temporary: marked abstract to silence compiler
+abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
     event AdapterSetuP(

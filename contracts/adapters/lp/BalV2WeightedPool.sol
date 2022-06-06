@@ -85,7 +85,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         emit SetVault(_vault);
     }
 
-    function balance() external view returns (uint256) {
+    function balance() external view override returns (uint256) {
         ensureBlockLock();
         (uint256 unstakedAmoutOut, uint256 stakedAmoutOut) = balancesOut();
         return unstakedAmoutOut + stakedAmoutOut;
@@ -94,6 +94,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
     function withdrawalInstructions(uint256 amount)
         external
         view
+        override
         returns (
             address,
             uint256,
