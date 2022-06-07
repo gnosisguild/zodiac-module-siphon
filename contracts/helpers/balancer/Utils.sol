@@ -23,7 +23,7 @@ library Utils {
     function upscaleArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors
-    ) internal pure returns (uint256[] memory) {
+    ) public pure returns (uint256[] memory) {
         for (uint256 i = 0; i < amounts.length; ++i) {
             amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
         }
@@ -31,8 +31,8 @@ library Utils {
         return amounts;
     }
 
-    function upscaleAmount(uint256 amount, uint256 scalingFactor)
-        internal
+    function upscale(uint256 amount, uint256 scalingFactor)
+        public
         pure
         returns (uint256)
     {
@@ -59,16 +59,16 @@ library Utils {
         return amounts;
     }
 
-    function downscaleUpAmount(uint256 amount, uint256 scalingFactor)
-        internal
+    function downscaleUp(uint256 amount, uint256 scalingFactor)
+        public
         pure
         returns (uint256)
     {
         return FixedPoint.divUp(amount, scalingFactor);
     }
 
-    function downscaleDownAmount(uint256 amount, uint256 scalingFactor)
-        internal
+    function downscaleDown(uint256 amount, uint256 scalingFactor)
+        public
         pure
         returns (uint256)
     {
@@ -101,7 +101,7 @@ library Utils {
         }
     }
 
-    function tokenIndexWithoutBpt(uint256 tokenIndex, uint256 bptIndex)
+    function indexWithoutBpt(uint256 tokenIndex, uint256 bptIndex)
         external
         pure
         returns (uint256)

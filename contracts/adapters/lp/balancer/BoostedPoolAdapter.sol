@@ -90,7 +90,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         return deltaEffective < thresholdParity;
     }
 
-    function balance() external view override returns (uint256) {
+    function balance() external pure override returns (uint256) {
         return 0;
     }
 
@@ -109,7 +109,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         (uint256 unstakedAmountIn, uint256 stakedAmountIn) = balancesIn();
 
         if (requiredAmountIn <= unstakedAmountIn) {
-            return encodeExit(requiredAmountIn, amountOut);
+            return encodeExit();
         } else if (requiredAmountIn <= unstakedAmountIn + stakedAmountIn) {
             // TODO multisendEncode(encodeUnstake(), encodeExit())
             return encodeUnstake(requiredAmountIn - unstakedAmountIn);
@@ -140,7 +140,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
 
     function outFromIn(uint256 amountIn)
         private
-        view
+        pure
         returns (uint256 amountOut)
     {
         // uint256 existingIn = IERC20(pool).totalSupply();
@@ -149,12 +149,12 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         // uint256 ratio = amountIn.div(existingIn);
 
         // amountOut = existingOut.mul(ratio);
-        return 0;
+        return amountIn;
     }
 
     function inFromOut(uint256 amountOut)
         private
-        view
+        pure
         returns (uint256 amountIn)
     {
         // uint256 existingIn = IERC20(pool).totalSupply();
@@ -164,7 +164,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
 
         // amountIn = existingIn.mul(ratio);
 
-        return 0;
+        return amountOut;
     }
 
     function encodeUnstake(uint256 amountIn)
@@ -181,7 +181,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         data = abi.encodeWithSignature("withdraw(uint256)", amountIn);
     }
 
-    function encodeExit(uint256 amountIn, uint256 amountOut)
+    function encodeExit()
         internal
         view
         returns (

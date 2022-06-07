@@ -27,7 +27,7 @@ library LinearPool {
         uint256 wrappedIndex = ILinearPool(pool).getWrappedIndex();
 
         Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
-        uint256 amountIn = Utils.upscaleAmount(
+        uint256 amountIn = Utils.upscale(
             bptAmountIn,
             tokens.scalingFactors[bptIndex]
         );
@@ -40,11 +40,7 @@ library LinearPool {
             swapParams
         );
 
-        return
-            Utils.downscaleDownAmount(
-                amountOut,
-                tokens.scalingFactors[mainIndex]
-            );
+        return Utils.downscaleDown(amountOut, tokens.scalingFactors[mainIndex]);
     }
 
     function calcBptOutGivenMainIn(address pool, uint256 mainAmountIn)
@@ -63,7 +59,7 @@ library LinearPool {
         uint256 wrappedIndex = ILinearPool(pool).getWrappedIndex();
 
         Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
-        uint256 amountIn = Utils.upscaleAmount(
+        uint256 amountIn = Utils.upscale(
             mainAmountIn,
             tokens.scalingFactors[mainIndex]
         );
@@ -76,11 +72,7 @@ library LinearPool {
             swapParams
         );
 
-        return
-            Utils.downscaleDownAmount(
-                amountOut,
-                tokens.scalingFactors[bptIndex]
-            );
+        return Utils.downscaleDown(amountOut, tokens.scalingFactors[bptIndex]);
     }
 
     //  function valueInMainToken(address pool) public view returns (uint256) {

@@ -28,24 +28,20 @@ library StablePhantomPool {
         uint256 indexBpt = indexIn;
         Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
 
-        uint256 amountIn = Utils.upscaleAmount(
+        uint256 amountIn = Utils.upscale(
             Utils.subtractSwapFee(pool, bptAmountIn),
             tokens.scalingFactors[indexIn]
         );
         uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
             amplification,
             Utils.balancesWithoutBpt(tokens.balances, indexBpt),
-            Utils.tokenIndexWithoutBpt(indexOut, indexBpt),
+            Utils.indexWithoutBpt(indexOut, indexBpt),
             amountIn,
             virtualSupply,
             0
         );
 
-        return
-            Utils.downscaleDownAmount(
-                amountOut,
-                tokens.scalingFactors[indexOut]
-            );
+        return Utils.downscaleDown(amountOut, tokens.scalingFactors[indexOut]);
     }
 
     function calcTokenOutGivenTokenIn(
@@ -67,7 +63,7 @@ library StablePhantomPool {
             indexBpt
         );
 
-        amountIn = Utils.upscaleAmount(
+        amountIn = Utils.upscale(
             Utils.subtractSwapFee(pool, amountIn),
             tokens.scalingFactors[indexIn]
         );
@@ -81,17 +77,13 @@ library StablePhantomPool {
         uint256 amountOut = StableMath._calcOutGivenIn(
             amplification,
             balancesWithoutBpt,
-            Utils.tokenIndexWithoutBpt(indexIn, indexBpt),
-            Utils.tokenIndexWithoutBpt(indexOut, indexBpt),
+            Utils.indexWithoutBpt(indexIn, indexBpt),
+            Utils.indexWithoutBpt(indexOut, indexBpt),
             amountIn,
             invariant
         );
 
-        return
-            Utils.downscaleDownAmount(
-                amountOut,
-                tokens.scalingFactors[indexOut]
-            );
+        return Utils.downscaleDown(amountOut, tokens.scalingFactors[indexOut]);
     }
 
     function query(address _pool)
