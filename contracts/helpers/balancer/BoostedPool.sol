@@ -158,6 +158,14 @@ library BoostedPool {
         bytes32 poolId = IPool(pool).getPoolId();
         (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
 
-        return (tokens[0], tokens[1], tokens[2]);
+        require(tokens.length == 4, "Expected StablePhantom to have 4 tokens");
+
+        uint256 bptIndex = IStablePhantomPool(pool).getBptIndex();
+
+        return (
+            ILinearPool(tokens[bptIndex > 0 ? 0 : 1]).getMainToken(),
+            ILinearPool(tokens[bptIndex > 1 ? 1 : 2]).getMainToken(),
+            ILinearPool(tokens[bptIndex > 2 ? 2 : 3]).getMainToken()
+        );
     }
 }
