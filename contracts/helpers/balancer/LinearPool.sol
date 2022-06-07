@@ -75,32 +75,13 @@ library LinearPool {
         return Utils.downscaleDown(amountOut, tokens.scalingFactors[bptIndex]);
     }
 
-    //  function valueInMainToken(address pool) public view returns (uint256) {
+    function calcNominalValue(address pool) public view returns (uint256) {
+        return
+            ILinearPool(pool).getVirtualSupply().mulDown(
+                ILinearPool(pool).getRate()
+            );
+    }
 
-    //     address vault = IPool(pool).getVault();
-    //     bytes32 poolId = IPool(pool).getPoolId();
-    //     (, uint256[] memory balances, ) = IVault(vault).getPoolTokens(poolId);
-    //     uint256[] memory scalingFactors = IPool(pool).getScalingFactors();
-
-    //     PoolReader.upscaleArray(balances, scalingFactors);
-
-    //     (uint256 lowerTarget, uint256 upperTarget) = ILinearPool(pool).getTargets();
-    //     LinearMath.Params memory params = LinearMath.Params({
-    //         fee: IPool(pool).getSwapFeePercentage(),
-    //         lowerTarget: lowerTarget,
-    //         upperTarget: upperTarget
-    //     });
-
-    //     uint256 mainIndex = ILinearPool(pool).getMainIndex();
-    //     uint256 wrappedIndex = ILinearPool(pool).getWrappedIndex();
-
-    //     uint256 totalBalance = LinearMath._calcInvariant(
-    //         LinearMath._toNominal(balances[mainIndex], params),
-    //         balances[wrappedIndex].mulDown(ILinearPool(pool).getWrappedTokenRate())
-    //     );
-
-    //     return PoolReader.downscaleDownAmount(totalBalance, scalingFactors, mainIndex);
-    // }
 
     function query(address _pool)
         public

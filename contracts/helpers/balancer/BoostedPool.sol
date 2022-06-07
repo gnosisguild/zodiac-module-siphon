@@ -145,7 +145,7 @@ library BoostedPool {
         revert("findLinearPool: Not found");
     }
 
-    function findStableTokens(address pool)
+    function findLinearPools(address pool)
         public
         view
         returns (address[] memory)
@@ -159,10 +159,22 @@ library BoostedPool {
         address[] memory result = new address[](tokens.length - 1);
         for (uint256 i = 0; i < tokens.length; i++) {
             if (i != bptIndex) {
-                result[Utils.indexWithoutBpt(i, bptIndex)] = ILinearPool(
-                    tokens[i]
-                ).getMainToken();
+                result[Utils.indexWithoutBpt(i, bptIndex)] = tokens[i];
             }
+        }
+
+        return result;
+    }
+
+    function findStableTokens(address pool)
+        public
+        view
+        returns (address[] memory)
+    {
+        address[] memory result = findLinearPools(pool);
+
+        for (uint256 i = 0; i < result.length; i++) {
+            result[i] = ILinearPool(result[i]).getMainToken();
         }
 
         return result;

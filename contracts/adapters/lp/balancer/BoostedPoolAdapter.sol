@@ -91,8 +91,36 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         return delta < parityTolerance;
     }
 
-    function balance() external pure override returns (uint256) {
-        return 0;
+    function balance() external view override returns (uint256) {
+        return debugNominalBalance(IERC20(pool).balanceOf(investor));
+    }
+
+    function debugNominalBalance(uint256 bptAmountIn)
+        public
+        view
+        returns (uint256)
+    {
+        // TODO first balance is just naive
+        // pending taking into account how much liquidity is in the LinearPool
+        address[] memory linearPools = BoostedPool.findLinearPools(pool);
+        uint256 tvl;
+        for (uint256 i = 0; i < linearPools.length; i++) {
+            tvl = tvl + LinearPool.calcNominalValue(linearPools[i]);
+        }
+
+        uint256 cut = bptAmountIn.divDown(
+            IStablePhantomPool(pool).getVirtualSupply()
+        );
+
+        return cut.mulDown(tvl);
+    }
+
+    function debugExitBalance(uint256 bptAmountIn)
+        public
+        view
+        returns (uint256)
+    {
+        return BoostedPool.calcStableOutGivenBptIn(pool, bptAmountIn, tokenOut);
     }
 
     function isWithdrawalEnabled() external view override returns (bool) {
