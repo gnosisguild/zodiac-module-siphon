@@ -30,7 +30,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
     uint256 public slipUp;
     uint256 public slipDown;
 
-    uint256 public thresholdParity;
+    uint256 public parityTolerance;
 
     function setUp() public {
         // TODO will move defaults to a constructor
@@ -39,7 +39,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         slipDown = 995 * 1e16;
 
         // 50 basis points
-        thresholdParity = FixedPoint.ONE.sub(995 * 1e16);
+        parityTolerance = FixedPoint.ONE.sub(995 * 1e16);
     }
 
     function setInvestor(address _investor) external onlyOwner {
@@ -53,41 +53,42 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
     }
 
     function isInParity() public view returns (bool) {
-        (address token1, address token2, address token3) = BoostedPool
-            .findStableTokens(pool);
-        uint256 p1by2 = BoostedPool.calcPrice(pool, token1, token2);
-        uint256 p1by3 = BoostedPool.calcPrice(pool, token1, token3);
+        address[] memory stableTokens = BoostedPool.findStableTokens(pool);
 
-        uint256 delta1by2 = p1by2 > FixedPoint.ONE
-            ? p1by2 - FixedPoint.ONE
-            : FixedPoint.ONE - p1by2;
+        uint256 delta = 0;
+        for (uint256 i = 1; i < stableTokens.length; i++) {
+            uint256 price = BoostedPool.calcPrice(
+                pool,
+                stableTokens[0],
+                stableTokens[i]
+            );
+            uint256 nextDelta = price > FixedPoint.ONE
+                ? price - FixedPoint.ONE
+                : FixedPoint.ONE - price;
 
-        uint256 delta1by3 = p1by3 > FixedPoint.ONE
-            ? p1by3 - FixedPoint.ONE
-            : FixedPoint.ONE - p1by3;
-
-        uint256 deltaEffective = Math.max(delta1by2, delta1by3);
-
-        return deltaEffective < thresholdParity;
+            delta = Math.max(delta, nextDelta);
+        }
+        return delta < parityTolerance;
     }
 
     function isInTandem() public view returns (bool) {
-        (address token1, address token2, address token3) = BoostedPool
-            .findStableTokens(pool);
-        uint256 p1by2 = BoostedPool.calcPriceIndirect(pool, token1, token2);
-        uint256 p1by3 = BoostedPool.calcPriceIndirect(pool, token1, token3);
+        address[] memory stableTokens = BoostedPool.findStableTokens(pool);
 
-        uint256 delta1by2 = p1by2 > FixedPoint.ONE
-            ? p1by2 - FixedPoint.ONE
-            : FixedPoint.ONE - p1by2;
+        uint256 delta = 0;
+        for (uint256 i = 1; i < stableTokens.length; i++) {
+            uint256 price = BoostedPool.calcPriceIndirect(
+                pool,
+                stableTokens[0],
+                stableTokens[i]
+            );
+            uint256 nextDelta = price > FixedPoint.ONE
+                ? price - FixedPoint.ONE
+                : FixedPoint.ONE - price;
 
-        uint256 delta1by3 = p1by3 > FixedPoint.ONE
-            ? p1by3 - FixedPoint.ONE
-            : FixedPoint.ONE - p1by3;
+            delta = Math.max(delta, nextDelta);
+        }
 
-        uint256 deltaEffective = Math.max(delta1by2, delta1by3);
-
-        return deltaEffective < thresholdParity;
+        return delta < parityTolerance;
     }
 
     function balance() external pure override returns (uint256) {

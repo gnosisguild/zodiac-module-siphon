@@ -148,24 +148,23 @@ library BoostedPool {
     function findStableTokens(address pool)
         public
         view
-        returns (
-            address,
-            address,
-            address
-        )
+        returns (address[] memory)
     {
         address vault = IPool(pool).getVault();
         bytes32 poolId = IPool(pool).getPoolId();
         (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
 
-        require(tokens.length == 4, "Expected StablePhantom to have 4 tokens");
-
         uint256 bptIndex = IStablePhantomPool(pool).getBptIndex();
 
-        return (
-            ILinearPool(tokens[bptIndex > 0 ? 0 : 1]).getMainToken(),
-            ILinearPool(tokens[bptIndex > 1 ? 1 : 2]).getMainToken(),
-            ILinearPool(tokens[bptIndex > 2 ? 2 : 3]).getMainToken()
-        );
+        address[] memory result = new address[](tokens.length - 1);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            if (i != bptIndex) {
+                result[Utils.indexWithoutBpt(i, bptIndex)] = ILinearPool(
+                    tokens[i]
+                ).getMainToken();
+            }
+        }
+
+        return result;
     }
 }
