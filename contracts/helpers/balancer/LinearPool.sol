@@ -82,7 +82,6 @@ library LinearPool {
             );
     }
 
-
     function query(address _pool)
         public
         view

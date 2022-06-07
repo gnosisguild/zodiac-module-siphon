@@ -6,7 +6,8 @@ interface ILiquidityPosition {
 
     function balance() external view returns (uint256);
 
-    function isWithdrawalEnabled() external view returns (bool);
+    // should we call it simply: isAvailable?
+    function isWithdrawalAvailable() external view returns (bool);
 
     function withdrawalInstructions(uint256 amount)
         external

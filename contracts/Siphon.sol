@@ -23,6 +23,8 @@ contract Siphon is Module {
 
     error NotEnoughLiquidityForPayment();
 
+    error LiquidityUnavailable();
+
     error WithdrawalFailed();
 
     error PaymentFailed();
@@ -104,8 +106,14 @@ contract Siphon is Module {
 
         uint256 amount = dp.readDelta();
 
+        //TODO this check is probably outdated
         if (lp.balance() < amount) {
             revert NotEnoughLiquidityForPayment();
+        }
+
+        //TODO this check is probably outdated
+        if (!lp.isWithdrawalAvailable()) {
+            revert LiquidityUnavailable();
         }
 
         address to;
