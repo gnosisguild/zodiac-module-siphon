@@ -94,6 +94,11 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         return 0;
     }
 
+    function isWithdrawalEnabled() external view override returns (bool) {
+        // we should pick one of those
+        return isInParity() && isInTandem();
+    }
+
     function withdrawalInstructions(uint256 amount)
         external
         view

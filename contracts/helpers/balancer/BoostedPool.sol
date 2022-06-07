@@ -88,7 +88,12 @@ library BoostedPool {
             stable2
         );
 
-        return Utils.price(stable1, amountIn, stable2, amountOut);
+        uint256 price = FixedPoint.divDown(
+            Utils.inferAndUpscale(amountIn, stable1),
+            Utils.inferAndUpscale(amountOut, stable1)
+        );
+
+        return price;
     }
 
     function calcPriceIndirect(
@@ -114,13 +119,12 @@ library BoostedPool {
             stable2
         );
 
-        return
-            Utils.price(
-                stable1,
-                amountOutInStable1,
-                stable2,
-                amountOutInStable2
-            );
+        uint256 price = FixedPoint.divDown(
+            Utils.inferAndUpscale(amountOutInStable1, stable1),
+            Utils.inferAndUpscale(amountOutInStable2, stable1)
+        );
+
+        return price;
     }
 
     function findLinearPool(address pool, address mainToken)

@@ -39,6 +39,18 @@ library Utils {
         return FixedPoint.mulDown(amount, scalingFactor);
     }
 
+    function inferAndUpscale(uint256 amount, address token)
+        public
+        view
+        returns (uint256)
+    {
+        // Tokens with more than 18 decimals are not supported.
+        uint256 scalingFactor = FixedPoint.ONE *
+            10**Math.sub(18, ERC20(token).decimals());
+
+        return FixedPoint.mulDown(amount, scalingFactor);
+    }
+
     function downscaleUpArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors
@@ -73,21 +85,6 @@ library Utils {
         returns (uint256)
     {
         return FixedPoint.divDown(amount, scalingFactor);
-    }
-
-    function price(
-        address token1,
-        uint256 amount1,
-        address token2,
-        uint256 amount2
-    ) external view returns (uint256) {
-        uint256 sc1 = calcScalingFactor(token1);
-        uint256 sc2 = calcScalingFactor(token2);
-
-        uint256 upscaledAmount1 = FixedPoint.mulDown(amount1, sc1);
-        uint256 upscaledAmount2 = FixedPoint.mulDown(amount2, sc2);
-
-        return upscaledAmount1.divDown(upscaledAmount2);
     }
 
     function balancesWithoutBpt(uint256[] memory balances, uint256 bptIndex)
