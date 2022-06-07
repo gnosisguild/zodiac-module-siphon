@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 import "../../lib/balancer/StableMath.sol";
 import "../../lib/balancer/FixedPoint.sol";
 import "./Interop.sol";
@@ -109,7 +111,7 @@ library Utils {
 
     function calcScalingFactor(address token) private view returns (uint256) {
         // Tokens that don't implement the `decimals` method are not supported.
-        uint256 tokenDecimals = IERC20(token).decimals();
+        uint256 tokenDecimals = ERC20(token).decimals();
 
         // Tokens with more than 18 decimals are not supported.
         uint256 decimalsDifference = Math.sub(18, tokenDecimals);
