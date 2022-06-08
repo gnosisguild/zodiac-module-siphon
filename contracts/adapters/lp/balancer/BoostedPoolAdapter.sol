@@ -3,13 +3,13 @@ pragma solidity ^0.8.0;
 pragma solidity ^0.8.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "../../../helpers/balancer/BoostedPool.sol";
 
 import "../../../ILiquidityPosition.sol";
 
-abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
+contract BoostedPoolAdapter is ILiquidityPosition {
     using FixedPoint for uint256;
 
     event SetAsset(address asset);
@@ -27,29 +27,39 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
     address public tokenOut;
 
     // TODO having up and down is 3am code, will fix
-    uint256 public slipUp;
-    uint256 public slipDown;
+    //uint256 public slipUp;
+    //uint256 public slipDown;
 
     uint256 public parityTolerance;
 
-    function setUp() public {
-        // TODO will move defaults to a constructor
-        // default slippage is 1%
-        slipUp = 101 * 1e16;
-        slipDown = 995 * 1e16;
-
+    constructor(
+        address _investor,
+        address _pool,
+        address _tokenOut
+    ) {
+        investor = _investor;
+        pool = _pool;
+        tokenOut = _tokenOut;
         // 50 basis points
-        parityTolerance = FixedPoint.ONE.sub(995 * 1e16);
+        parityTolerance = FixedPoint.ONE.sub(995 * 1e15);
     }
 
-    function setInvestor(address _investor) external onlyOwner {
+    function asset() external view override returns (address) {
+        return tokenOut;
+    }
+
+    function balance() external view override returns (uint256) {
+        return debugNominalBalance(IERC20(pool).balanceOf(investor));
+    }
+
+    function setInvestor(address _investor) external {
         investor = _investor;
         emit SetInvestor(_investor);
     }
 
-    function setAsset(address asset) external onlyOwner {
-        tokenOut = asset;
-        emit SetAsset(asset);
+    function setAsset(address _asset) external {
+        tokenOut = _asset;
+        emit SetAsset(_asset);
     }
 
     function isInParity() public view returns (bool) {
@@ -71,6 +81,30 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         return delta < parityTolerance;
     }
 
+    function priceDeltas() public view returns (uint256, uint256) {
+        address[] memory stableTokens = BoostedPool.findStableTokens(pool);
+
+        uint256 price1 = BoostedPool.calcPrice(
+            pool,
+            stableTokens[0],
+            stableTokens[1]
+        );
+        uint256 delta1 = price1 > FixedPoint.ONE
+            ? price1 - FixedPoint.ONE
+            : FixedPoint.ONE - price1;
+
+        uint256 price2 = BoostedPool.calcPrice(
+            pool,
+            stableTokens[0],
+            stableTokens[2]
+        );
+        uint256 delta2 = price2 > FixedPoint.ONE
+            ? price2 - FixedPoint.ONE
+            : FixedPoint.ONE - price2;
+
+        return (delta1, delta2);
+    }
+
     function isInTandem() public view returns (bool) {
         address[] memory stableTokens = BoostedPool.findStableTokens(pool);
 
@@ -89,10 +123,6 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
         }
 
         return delta < parityTolerance;
-    }
-
-    function balance() external view override returns (uint256) {
-        return debugNominalBalance(IERC20(pool).balanceOf(investor));
     }
 
     function debugNominalBalance(uint256 bptAmountIn)
@@ -130,7 +160,7 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
 
     function withdrawalInstructions(uint256 amount)
         external
-        view
+        pure
         override
         returns (
             address,
@@ -138,111 +168,113 @@ abstract contract BalV2WeightedPool is ILiquidityPosition, FactoryFriendly {
             bytes memory
         )
     {
-        uint256 amountOut = amount;
-        uint256 requiredAmountIn = inFromOut(amountOut);
-        (uint256 unstakedAmountIn, uint256 stakedAmountIn) = balancesIn();
+        address bla;
+        return (bla, 0, "0x");
+        // uint256 amountOut = amount;
+        // uint256 requiredAmountIn = inFromOut(amountOut);
+        // (uint256 unstakedAmountIn, uint256 stakedAmountIn) = balancesIn();
 
-        if (requiredAmountIn <= unstakedAmountIn) {
-            return encodeExit();
-        } else if (requiredAmountIn <= unstakedAmountIn + stakedAmountIn) {
-            // TODO multisendEncode(encodeUnstake(), encodeExit())
-            return encodeUnstake(requiredAmountIn - unstakedAmountIn);
-        } else {
-            revert NotEnoughLitquidity();
-        }
+        // if (requiredAmountIn <= unstakedAmountIn) {
+        //     return encodeExit();
+        // } else if (requiredAmountIn <= unstakedAmountIn + stakedAmountIn) {
+        //     // TODO multisendEncode(encodeUnstake(), encodeExit())
+        //     return encodeUnstake(requiredAmountIn - unstakedAmountIn);
+        // } else {
+        //     revert NotEnoughLitquidity();
+        // }
     }
 
-    function balancesIn()
-        internal
-        view
-        returns (uint256 unstakedAmountIn, uint256 stakedAmountIn)
-    {
-        unstakedAmountIn = IERC20(pool).balanceOf(investor);
-        stakedAmountIn = IERC20(gauge).balanceOf(investor);
-    }
+    // function balancesIn()
+    //     internal
+    //     view
+    //     returns (uint256 unstakedAmountIn, uint256 stakedAmountIn)
+    // {
+    //     unstakedAmountIn = IERC20(pool).balanceOf(investor);
+    //     stakedAmountIn = IERC20(gauge).balanceOf(investor);
+    // }
 
-    function balancesOut()
-        internal
-        view
-        returns (uint256 unstakedAmountOut, uint256 stakedAmountOut)
-    {
-        (uint256 unstakedAmountIn, uint256 stakedAmountIn) = balancesIn();
+    // function balancesOut()
+    //     internal
+    //     view
+    //     returns (uint256 unstakedAmountOut, uint256 stakedAmountOut)
+    // {
+    //     (uint256 unstakedAmountIn, uint256 stakedAmountIn) = balancesIn();
 
-        unstakedAmountOut = outFromIn(unstakedAmountIn);
-        stakedAmountOut = outFromIn(stakedAmountIn);
-    }
+    //     unstakedAmountOut = outFromIn(unstakedAmountIn);
+    //     stakedAmountOut = outFromIn(stakedAmountIn);
+    // }
 
-    function outFromIn(uint256 amountIn)
-        private
-        pure
-        returns (uint256 amountOut)
-    {
-        // uint256 existingIn = IERC20(pool).totalSupply();
-        // uint256 existingOut = findAssetInPool();
+    // function outFromIn(uint256 amountIn)
+    //     private
+    //     pure
+    //     returns (uint256 amountOut)
+    // {
+    //     // uint256 existingIn = IERC20(pool).totalSupply();
+    //     // uint256 existingOut = findAssetInPool();
 
-        // uint256 ratio = amountIn.div(existingIn);
+    //     // uint256 ratio = amountIn.div(existingIn);
 
-        // amountOut = existingOut.mul(ratio);
-        return amountIn;
-    }
+    //     // amountOut = existingOut.mul(ratio);
+    //     return amountIn;
+    // }
 
-    function inFromOut(uint256 amountOut)
-        private
-        pure
-        returns (uint256 amountIn)
-    {
-        // uint256 existingIn = IERC20(pool).totalSupply();
-        // uint256 existingOut = findAssetInPool();
+    // function inFromOut(uint256 amountOut)
+    //     private
+    //     pure
+    //     returns (uint256 amountIn)
+    // {
+    //     // uint256 existingIn = IERC20(pool).totalSupply();
+    //     // uint256 existingOut = findAssetInPool();
 
-        // uint256 ratio = amountOut.div(existingOut);
+    //     // uint256 ratio = amountOut.div(existingOut);
 
-        // amountIn = existingIn.mul(ratio);
+    //     // amountIn = existingIn.mul(ratio);
 
-        return amountOut;
-    }
+    //     return amountOut;
+    // }
 
-    function encodeUnstake(uint256 amountIn)
-        internal
-        view
-        returns (
-            address to,
-            uint256 value,
-            bytes memory data
-        )
-    {
-        to = gauge;
-        value = 0;
-        data = abi.encodeWithSignature("withdraw(uint256)", amountIn);
-    }
+    // function encodeUnstake(uint256 amountIn)
+    //     internal
+    //     view
+    //     returns (
+    //         address to,
+    //         uint256 value,
+    //         bytes memory data
+    //     )
+    // {
+    //     to = gauge;
+    //     value = 0;
+    //     data = abi.encodeWithSignature("withdraw(uint256)", amountIn);
+    // }
 
-    function encodeExit()
-        internal
-        view
-        returns (
-            address to,
-            uint256 value,
-            bytes memory data
-        )
-    {
-        to = vault;
-        value = 0;
+    // function encodeExit()
+    //     internal
+    //     view
+    //     returns (
+    //         address to,
+    //         uint256 value,
+    //         bytes memory data
+    //     )
+    // {
+    //     to = vault;
+    //     value = 0;
 
-        // address[] memory tokens = getPoolTokens();
-        // uint256[] memory minAmountsOut = new uint256[](tokens.length);
-        // minAmountsOut[findAssetIndex(tokens)] = amountOut;
-        data = "0x";
+    //     // address[] memory tokens = getPoolTokens();
+    //     // uint256[] memory minAmountsOut = new uint256[](tokens.length);
+    //     // minAmountsOut[findAssetIndex(tokens)] = amountOut;
+    //     data = "0x";
 
-        // data = abi.encodeWithSignature(
-        //     "exitPool",
-        //     poolId,
-        //     investor,
-        //     investor
-        //     // (
-        //     //     tokens: tokens,
-        //     //     minAmountsOut: minAmountsOut,
-        //     //     toInternalBalance: false,
-        //     //     userData: abi.encode(PoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, amountIn)
-        //     // )
-        // );
-    }
+    //     // data = abi.encodeWithSignature(
+    //     //     "exitPool",
+    //     //     poolId,
+    //     //     investor,
+    //     //     investor
+    //     //     // (
+    //     //     //     tokens: tokens,
+    //     //     //     minAmountsOut: minAmountsOut,
+    //     //     //     toInternalBalance: false,
+    //     //     //     userData: abi.encode(PoolExitKind.EXACT_BPT_IN_FOR_TOKENS_OUT, amountIn)
+    //     //     // )
+    //     // );
+    // }
 }

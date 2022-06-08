@@ -20,7 +20,8 @@ const argv = yargs
 
 // Load environment variables.
 dotenv.config();
-const { INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK } = process.env;
+const { ALCHEMY_KEY, INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK } =
+  process.env;
 
 const DEFAULT_MNEMONIC =
   "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
@@ -49,7 +50,7 @@ const config: HardhatUserConfig = {
     sources: "contracts",
   },
   solidity: {
-    compilers: [{ version: "0.8.6" }, { version: "0.6.12" }],
+    compilers: [{ version: "0.8.6" }],
     settings: {
       optimizer: {
         enabled: true,
@@ -59,6 +60,9 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
+      forking: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+      },
       allowUnlimitedContractSize: true,
     },
     mainnet: {
@@ -68,6 +72,10 @@ const config: HardhatUserConfig = {
     rinkeby: {
       ...sharedNetworkConfig,
       url: `https://rinkeby.infura.io/v3/${INFURA_KEY}`,
+    },
+    kovan: {
+      ...sharedNetworkConfig,
+      url: `https://kovan.infura.io/v3/${INFURA_KEY}`,
     },
     xdai: {
       ...sharedNetworkConfig,
@@ -79,7 +87,7 @@ const config: HardhatUserConfig = {
     },
   },
   namedAccounts: {
-    deployer: 0,
+    deployer: 1,
   },
   mocha: {
     timeout: 2000000,
