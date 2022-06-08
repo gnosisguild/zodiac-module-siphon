@@ -64,7 +64,7 @@ library BoostedPool {
         uint256 amountOut = StablePhantomPool.calcTokenOutGivenBptIn(
             pool,
             amountIn,
-            tokenOut
+            linearPool
         );
 
         // amountIn is linear BPT
@@ -127,24 +127,6 @@ library BoostedPool {
         return price;
     }
 
-    function findLinearPool(address pool, address mainToken)
-        internal
-        view
-        returns (address)
-    {
-        address vault = IPool(pool).getVault();
-        bytes32 poolId = IPool(pool).getPoolId();
-        (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (ILinearPool(tokens[i]).getMainToken() == mainToken) {
-                return tokens[i];
-            }
-        }
-
-        revert("findLinearPool: Not found");
-    }
-
     function findLinearPools(address pool)
         public
         view
@@ -162,6 +144,21 @@ library BoostedPool {
         }
 
         return result;
+    }
+
+    function findLinearPool(address pool, address mainToken)
+        internal
+        view
+        returns (address)
+    {
+        address[] memory linearPools = findLinearPools(pool);
+        for (uint256 i = 0; i < linearPools.length; i++) {
+            if (ILinearPool(linearPools[i]).getMainToken() == mainToken) {
+                return linearPools[i];
+            }
+        }
+
+        revert("findLinearPool: Not found");
     }
 
     function findStableTokens(address pool)
