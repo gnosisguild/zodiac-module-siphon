@@ -10,8 +10,8 @@ describe("MakerVault", async () => {
 
   // const baseSetup = deployments.createFixture(async () => {
   //   await deployments.fixture();
-  //   const CDPManagger = await hre.ethers.getContractFactory("ICDPManagger");
-  //   const cdpManager = await CDPManagger.deploy();
+  //   const CDPManager = await hre.ethers.getContractFactory("ICDPManager");
+  //   const cdpManager = await CDPManager.deploy();
 
   //   return {
   //     cdpManager,
@@ -23,21 +23,22 @@ describe("MakerVault", async () => {
 
     const cdpManager = await hre.ethers.getContractAt(
       "ICDPManager",
-      "0xdcBf58c9640A7bd0e062f8092d70fb981Bb52032"
+      "0x5ef30b9986345249bc32d8928B7ee64DE9435E39"
     );
     const vatAddress = await cdpManager.vat();
     const vat = await hre.ethers.getContractAt("IVat", vatAddress);
     const spotter = await hre.ethers.getContractAt(
       "ISpotter",
-      "0xACe2A9106ec175bd56ec05C9E38FE1FDa8a1d758"
+      "0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3"
     );
-    const urn = 210;
+    const urn = 27353;
     const urnHandler = await cdpManager.urns(urn);
     const ilk = await cdpManager.ilks(urn);
-    const [ink, art] = await vat.urns(ilk, urnHandler);
-    const [, rate, spot, ,] = vat.ilks(ilk);
-    // const [, mat] = spotter.ilks(ilk);
-    // const debt = (ink * spot * mat) / (art * rate);
+    const [ink, art] = await vat.urns(ilk, urnHandler); // returns wad
+    const [, rate, spot, ,] = await vat.ilks(ilk); // returns ray
+    const [, mat] = await spotter.ilks(ilk); // raturns ray
+    const debt = art.mul(rate);
+    const ratio = ink.mul(spot).mul(mat).div(debt);
 
     expect(true).to.equals(true);
     console.log("      urn: ", urn);
@@ -45,9 +46,10 @@ describe("MakerVault", async () => {
     console.log("      ilk: ", ilk);
     console.log("      ink: ", ink.toString());
     console.log("      art: ", art.toString());
-    console.log("rate: ", rate);
-    console.log("spot: ", spot);
-    // console.log("mat: ", mat);
-    // console.log("debt: ", debt);
+    console.log("      rate: ", rate.toString());
+    console.log("      spot: ", spot.toString());
+    console.log("      mat: ", mat.toString());
+    console.log("      debt: ", debt.div(10 ^ 9).toString());
+    console.log("      ratio: ", ratio.toString());
   });
 });

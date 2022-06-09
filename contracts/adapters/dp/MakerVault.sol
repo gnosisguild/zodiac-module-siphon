@@ -4,7 +4,7 @@ pragma solidity ^0.8.6;
 import "../../IDebtPosition.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 
-interface ICDPManagger {
+interface ICDPManager {
     function ilks(uint256 vault) external view returns (bytes32 ilk);
 
     function urns(uint256 vault) external view returns (address urnHandler);
@@ -159,9 +159,9 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         ratioTrigger = _ratioTrigger;
         vault = _vault;
 
-        ilk = ICDPManagger(cdpManager).ilks(vault);
-        urnHandler = ICDPManagger(cdpManager).urns(vault);
-        vat = ICDPManagger(cdpManager).vat();
+        ilk = ICDPManager(cdpManager).ilks(vault);
+        urnHandler = ICDPManager(cdpManager).urns(vault);
+        vat = ICDPManager(cdpManager).vat();
 
         transferOwnership(_owner);
 
