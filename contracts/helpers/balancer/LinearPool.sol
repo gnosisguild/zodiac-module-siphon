@@ -17,7 +17,8 @@ library LinearPool {
         returns (uint256)
     {
         (
-            PoolTokens memory tokens,
+            uint256[] memory balances,
+            uint256[] memory scalingFactors,
             LinearMath.Params memory swapParams,
             uint256 virtualSupply
         ) = query(pool);
@@ -26,21 +27,19 @@ library LinearPool {
         uint256 mainIndex = ILinearPool(pool).getMainIndex();
         uint256 wrappedIndex = ILinearPool(pool).getWrappedIndex();
 
-        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
-        uint256 amountIn = Utils.upscale(
-            bptAmountIn,
-            tokens.scalingFactors[bptIndex]
-        );
+        Utils.upscaleArray(balances, scalingFactors);
+
+        uint256 amountIn = Utils.upscale(bptAmountIn, scalingFactors[bptIndex]);
 
         uint256 amountOut = LinearMath._calcMainOutPerBptIn(
             amountIn,
-            tokens.balances[mainIndex],
-            tokens.balances[wrappedIndex],
+            balances[mainIndex],
+            balances[wrappedIndex],
             virtualSupply,
             swapParams
         );
 
-        return Utils.downscaleDown(amountOut, tokens.scalingFactors[mainIndex]);
+        return Utils.downscaleDown(amountOut, scalingFactors[mainIndex]);
     }
 
     function calcBptOutGivenMainIn(address pool, uint256 mainAmountIn)
@@ -49,7 +48,8 @@ library LinearPool {
         returns (uint256)
     {
         (
-            PoolTokens memory tokens,
+            uint256[] memory balances,
+            uint256[] memory scalingFactors,
             LinearMath.Params memory swapParams,
             uint256 virtualSupply
         ) = query(pool);
@@ -58,21 +58,22 @@ library LinearPool {
         uint256 mainIndex = ILinearPool(pool).getMainIndex();
         uint256 wrappedIndex = ILinearPool(pool).getWrappedIndex();
 
-        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
+        Utils.upscaleArray(balances, scalingFactors);
+
         uint256 amountIn = Utils.upscale(
             mainAmountIn,
-            tokens.scalingFactors[mainIndex]
+            scalingFactors[mainIndex]
         );
 
         uint256 amountOut = LinearMath._calcBptOutPerMainIn(
             amountIn,
-            tokens.balances[mainIndex],
-            tokens.balances[wrappedIndex],
+            balances[mainIndex],
+            balances[wrappedIndex],
             virtualSupply,
             swapParams
         );
 
-        return Utils.downscaleDown(amountOut, tokens.scalingFactors[bptIndex]);
+        return Utils.downscaleDown(amountOut, scalingFactors[bptIndex]);
     }
 
     function calcNominalValue(address pool) public view returns (uint256) {
@@ -86,15 +87,17 @@ library LinearPool {
         public
         view
         returns (
-            PoolTokens memory tokens,
+            uint256[] memory balances,
+            uint256[] memory scalingFactors,
             LinearMath.Params memory swapParams,
             uint256 virtualSupply
         )
     {
         ILinearPool pool = ILinearPool(_pool);
-        tokens.scalingFactors = pool.getScalingFactors();
-        (tokens.addresses, tokens.balances, ) = IVault(pool.getVault())
-            .getPoolTokens(pool.getPoolId());
+        scalingFactors = pool.getScalingFactors();
+        (, balances, ) = IVault(pool.getVault()).getPoolTokens(
+            pool.getPoolId()
+        );
 
         (uint256 lowerTarget, uint256 upperTarget) = pool.getTargets();
         swapParams = LinearMath.Params({
@@ -103,11 +106,5 @@ library LinearPool {
             upperTarget: upperTarget
         });
         virtualSupply = pool.getVirtualSupply();
-    }
-
-    struct PoolTokens {
-        address[] addresses;
-        uint256[] balances;
-        uint256[] scalingFactors;
     }
 }

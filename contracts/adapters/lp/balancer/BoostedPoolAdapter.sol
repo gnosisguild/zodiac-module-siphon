@@ -5,9 +5,9 @@ pragma solidity ^0.8.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "../../../helpers/balancer/BoostedPool.sol";
-
 import "../../../ILiquidityPosition.sol";
+
+import "../../../helpers/balancer/BoostedPool.sol";
 
 contract BoostedPoolAdapter is ILiquidityPosition {
     using FixedPoint for uint256;
@@ -81,30 +81,6 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         return delta < parityTolerance;
     }
 
-    function priceDeltas() public view returns (uint256, uint256) {
-        address[] memory stableTokens = BoostedPool.findStableTokens(pool);
-
-        uint256 price1 = BoostedPool.calcPrice(
-            pool,
-            stableTokens[0],
-            stableTokens[1]
-        );
-        uint256 delta1 = price1 > FixedPoint.ONE
-            ? price1 - FixedPoint.ONE
-            : FixedPoint.ONE - price1;
-
-        uint256 price2 = BoostedPool.calcPrice(
-            pool,
-            stableTokens[0],
-            stableTokens[2]
-        );
-        uint256 delta2 = price2 > FixedPoint.ONE
-            ? price2 - FixedPoint.ONE
-            : FixedPoint.ONE - price2;
-
-        return (delta1, delta2);
-    }
-
     function isInTandem() public view returns (bool) {
         address[] memory stableTokens = BoostedPool.findStableTokens(pool);
 
@@ -123,6 +99,37 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         }
 
         return delta < parityTolerance;
+    }
+
+    function _debugPriceDeltas() public view returns (uint256, uint256) {
+        (uint256 price1, uint256 price2) = _debugPrices();
+        uint256 delta1 = price1 > FixedPoint.ONE
+            ? price1 - FixedPoint.ONE
+            : FixedPoint.ONE - price1;
+
+        uint256 delta2 = price2 > FixedPoint.ONE
+            ? price2 - FixedPoint.ONE
+            : FixedPoint.ONE - price2;
+
+        return (delta1, delta2);
+    }
+
+    function _debugPrices() public view returns (uint256, uint256) {
+        address[] memory stableTokens = BoostedPool.findStableTokens(pool);
+
+        uint256 price1 = BoostedPool.calcPrice(
+            pool,
+            stableTokens[0],
+            stableTokens[1]
+        );
+
+        uint256 price2 = BoostedPool.calcPrice(
+            pool,
+            stableTokens[0],
+            stableTokens[2]
+        );
+
+        return (price1, price2);
     }
 
     function debugNominalBalance(uint256 bptAmountIn)

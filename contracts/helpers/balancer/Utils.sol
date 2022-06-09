@@ -23,16 +23,14 @@ library Utils {
     function upscaleArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors
-    ) public pure returns (uint256[] memory) {
-        for (uint256 i = 0; i < amounts.length; ++i) {
+    ) internal pure {
+        for (uint256 i = 0; i < amounts.length; i++) {
             amounts[i] = FixedPoint.mulDown(amounts[i], scalingFactors[i]);
         }
-
-        return amounts;
     }
 
     function upscale(uint256 amount, uint256 scalingFactor)
-        public
+        external
         pure
         returns (uint256)
     {
@@ -40,7 +38,7 @@ library Utils {
     }
 
     function inferAndUpscale(uint256 amount, address token)
-        public
+        external
         view
         returns (uint256)
     {
@@ -54,25 +52,23 @@ library Utils {
     function downscaleUpArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors
-    ) internal pure returns (uint256[] memory) {
+    ) internal pure {
         for (uint256 i = 0; i < amounts.length; ++i) {
             amounts[i] = FixedPoint.divUp(amounts[i], scalingFactors[i]);
         }
-        return amounts;
     }
 
     function downscaleDownArray(
         uint256[] memory amounts,
         uint256[] memory scalingFactors
-    ) internal pure returns (uint256[] memory) {
+    ) internal pure {
         for (uint256 i = 0; i < amounts.length; ++i) {
             amounts[i] = FixedPoint.divDown(amounts[i], scalingFactors[i]);
         }
-        return amounts;
     }
 
     function downscaleUp(uint256 amount, uint256 scalingFactor)
-        public
+        external
         pure
         returns (uint256)
     {
@@ -80,7 +76,7 @@ library Utils {
     }
 
     function downscaleDown(uint256 amount, uint256 scalingFactor)
-        public
+        external
         pure
         returns (uint256)
     {
@@ -88,7 +84,7 @@ library Utils {
     }
 
     function balancesWithoutBpt(uint256[] memory balances, uint256 bptIndex)
-        external
+        internal
         pure
         returns (uint256[] memory result)
     {
@@ -103,7 +99,7 @@ library Utils {
         pure
         returns (uint256)
     {
-        return tokenIndex < bptIndex ? tokenIndex : tokenIndex + 1;
+        return tokenIndex < bptIndex ? tokenIndex : tokenIndex - 1;
     }
 
     function calcScalingFactor(address token) private view returns (uint256) {
@@ -116,7 +112,7 @@ library Utils {
     }
 
     function indexOf(address[] memory arr, address searchFor)
-        public
+        external
         pure
         returns (uint256)
     {

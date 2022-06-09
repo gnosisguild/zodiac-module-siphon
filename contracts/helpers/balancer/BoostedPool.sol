@@ -90,7 +90,7 @@ library BoostedPool {
 
         uint256 price = FixedPoint.divDown(
             Utils.inferAndUpscale(amountIn, stable1),
-            Utils.inferAndUpscale(amountOut, stable1)
+            Utils.inferAndUpscale(amountOut, stable2)
         );
 
         return price;
@@ -121,7 +121,7 @@ library BoostedPool {
 
         uint256 price = FixedPoint.divDown(
             Utils.inferAndUpscale(amountOutInStable1, stable1),
-            Utils.inferAndUpscale(amountOutInStable2, stable1)
+            Utils.inferAndUpscale(amountOutInStable2, stable2)
         );
 
         return price;
@@ -140,7 +140,7 @@ library BoostedPool {
 
         address[] memory result = new address[](tokens.length - 1);
         for (uint256 i = 0; i < result.length; i++) {
-            result[i] = tokens[Utils.indexWithoutBpt(i, bptIndex)];
+            result[i] = tokens[i < bptIndex ? i : i + 1];
         }
 
         return result;
