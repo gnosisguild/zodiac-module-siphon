@@ -101,11 +101,10 @@ library BoostedPool {
         address stable1,
         address stable2
     ) public view returns (uint256) {
-        // simulate a trade with 1 basis point of the pool supply
+        // feeler is 1 basis point of the total supply
         uint256 feeler = IStablePhantomPool(pool).getVirtualSupply().divDown(
-            10000
+            FixedPoint.ONE * 10000
         );
-
         uint256 amountIn = feeler;
         uint256 amountOutInStable1 = calcStableOutGivenBptIn(
             pool,

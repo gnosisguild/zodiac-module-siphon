@@ -132,6 +132,24 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         return (price1, price2);
     }
 
+    function _debugPricesIndirect() public view returns (uint256, uint256) {
+        address[] memory stableTokens = BoostedPool.findStableTokens(pool);
+
+        uint256 price1 = BoostedPool.calcPriceIndirect(
+            pool,
+            stableTokens[0],
+            stableTokens[1]
+        );
+
+        uint256 price2 = BoostedPool.calcPriceIndirect(
+            pool,
+            stableTokens[0],
+            stableTokens[2]
+        );
+
+        return (price1, price2);
+    }
+
     function debugNominalBalance(uint256 bptAmountIn)
         public
         view
