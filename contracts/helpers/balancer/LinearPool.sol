@@ -8,11 +8,18 @@ import "../../lib/balancer/FixedPoint.sol";
 import "./Interop.sol";
 import "./Utils.sol";
 
-library LinearPool {
+library LinearPoolHelper {
     using FixedPoint for uint256;
 
+    function nominalValue(address pool) external view returns (uint256) {
+        return
+            ILinearPool(pool).getVirtualSupply().mulDown(
+                ILinearPool(pool).getRate()
+            );
+    }
+
     function calcMainOutGivenBptIn(address pool, uint256 bptAmountIn)
-        public
+        external
         view
         returns (uint256)
     {
@@ -43,7 +50,7 @@ library LinearPool {
     }
 
     function calcBptOutGivenMainIn(address pool, uint256 mainAmountIn)
-        public
+        external
         view
         returns (uint256)
     {
@@ -76,15 +83,45 @@ library LinearPool {
         return Utils.downscaleDown(amountOut, scalingFactors[bptIndex]);
     }
 
-    function calcNominalValue(address pool) public view returns (uint256) {
-        return
-            ILinearPool(pool).getVirtualSupply().mulDown(
-                ILinearPool(pool).getRate()
-            );
+    function calcBptInGivenMainOut(address pool, uint256 mainAmountOut)
+        external
+        view
+        returns (uint256)
+    {
+        (
+            uint256[] memory balances,
+            uint256[] memory scalingFactors,
+            LinearMath.Params memory swapParams,
+            uint256 virtualSupply
+        ) = query(pool);
+
+        uint256 bptIndex = ILinearPool(pool).getBptIndex();
+        uint256 mainIndex = ILinearPool(pool).getMainIndex();
+        uint256 wrappedIndex = ILinearPool(pool).getWrappedIndex();
+
+        uint256 indexIn = bptIndex;
+        uint256 indexOut = mainIndex;
+
+        Utils.upscaleArray(balances, scalingFactors);
+
+        uint256 amountOut = Utils.upscale(
+            mainAmountOut,
+            scalingFactors[indexOut]
+        );
+
+        uint256 amountIn = LinearMath._calcBptInPerMainOut(
+            amountOut,
+            balances[mainIndex],
+            balances[wrappedIndex],
+            virtualSupply,
+            swapParams
+        );
+
+        return Utils.downscaleUp(amountIn, scalingFactors[indexIn]);
     }
 
     function query(address _pool)
-        public
+        private
         view
         returns (
             uint256[] memory balances,

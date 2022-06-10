@@ -8,8 +8,20 @@ import "../../lib/balancer/FixedPoint.sol";
 import "./LinearPool.sol";
 import "./StablePhantomPool.sol";
 
-library BoostedPool {
+library BoostedPoolHelper {
     using FixedPoint for uint256;
+
+    function nominalValue(address pool) external view returns (uint256) {
+        // TODO first balance is just naive
+        // pending taking into account how much liquidity is in the LinearPool
+        address[] memory linearPools = findLinearPools(pool);
+        uint256 total;
+        for (uint256 i = 0; i < linearPools.length; i++) {
+            total += LinearPoolHelper.nominalValue(linearPools[i]);
+        }
+
+        return total;
+    }
 
     // Computing from LinearPoolLeft MainToken (e.g., a stable coint)
     // To -> LinearPoolLeft Bpt
@@ -26,7 +38,7 @@ library BoostedPool {
 
         // amountIn is mainToken of poolIn, i.e., its a stable coin
         // amoutOut is bpt of poolIn
-        uint256 amountOut = LinearPool.calcBptOutGivenMainIn(
+        uint256 amountOut = LinearPoolHelper.calcBptOutGivenMainIn(
             linearPoolLeft,
             amountIn
         );
@@ -34,7 +46,7 @@ library BoostedPool {
         // amountIn is bpt of poolIn
         // amoutOut is bpt of poolOut
         amountIn = amountOut;
-        amountOut = StablePhantomPool.calcTokenOutGivenTokenIn(
+        amountOut = StablePhantomPoolHelper.calcTokenOutGivenTokenIn(
             pool,
             linearPoolLeft,
             amountIn,
@@ -44,7 +56,10 @@ library BoostedPool {
         // amountIn is bpt of poolOut
         // amoutOut is mainToken of poolOut, i.e., its a stable coin
         amountIn = amountOut;
-        amountOut = LinearPool.calcMainOutGivenBptIn(linearPoolRight, amountIn);
+        amountOut = LinearPoolHelper.calcMainOutGivenBptIn(
+            linearPoolRight,
+            amountIn
+        );
 
         return amountOut;
     }
@@ -61,7 +76,7 @@ library BoostedPool {
 
         // amountIn is boosted BPT
         // amountOut is linear BPT
-        uint256 amountOut = StablePhantomPool.calcTokenOutGivenBptIn(
+        uint256 amountOut = StablePhantomPoolHelper.calcTokenOutGivenBptIn(
             pool,
             amountIn,
             linearPool
@@ -70,9 +85,34 @@ library BoostedPool {
         // amountIn is linear BPT
         // amountOut is linear MainToken, i.e., a stable coin
         amountIn = amountOut;
-        amountOut = LinearPool.calcMainOutGivenBptIn(linearPool, amountIn);
+        amountOut = LinearPoolHelper.calcMainOutGivenBptIn(
+            linearPool,
+            amountIn
+        );
 
         return amountOut;
+    }
+
+    function calcBptInGivenStableOut(
+        address pool,
+        address tokenOut,
+        uint256 amountOut
+    ) public view returns (uint256) {
+        address linearPool = findLinearPool(pool, tokenOut);
+        uint256 linearBptAmountIn = LinearPoolHelper.calcBptInGivenMainOut(
+            linearPool,
+            amountOut
+        );
+
+        tokenOut = linearPool;
+        amountOut = linearBptAmountIn;
+
+        return
+            StablePhantomPoolHelper.calcBptInGivenTokenOut(
+                pool,
+                tokenOut,
+                amountOut
+            );
     }
 
     function calcPrice(

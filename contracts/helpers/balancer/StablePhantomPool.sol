@@ -8,14 +8,14 @@ import "../../lib/balancer/FixedPoint.sol";
 import "./Interop.sol";
 import "./Utils.sol";
 
-library StablePhantomPool {
+library StablePhantomPoolHelper {
     using FixedPoint for uint256;
 
     function calcTokenOutGivenBptIn(
         address pool,
         uint256 bptAmountIn,
         address tokenOut
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         (
             PoolTokens memory tokens,
             uint256 amplification,
@@ -49,7 +49,7 @@ library StablePhantomPool {
         address tokenIn,
         uint256 amountIn,
         address tokenOut
-    ) public view returns (uint256) {
+    ) external view returns (uint256) {
         (PoolTokens memory tokens, uint256 amplification, ) = query(pool);
 
         uint256 indexBpt = IStablePhantomPool(pool).getBptIndex();
@@ -84,6 +84,51 @@ library StablePhantomPool {
         );
 
         return Utils.downscaleDown(amountOut, tokens.scalingFactors[indexOut]);
+    }
+
+    function calcBptInGivenTokenOut(
+        address pool,
+        address tokenOut,
+        uint256 amountOut
+    ) external view returns (uint256) {
+        (
+            PoolTokens memory tokens,
+            uint256 amplification,
+            uint256 virtualSupply
+        ) = query(pool);
+
+        uint256 indexBpt = IStablePhantomPool(pool).getBptIndex();
+        uint256 indexOut = Utils.indexOf(tokens.addresses, tokenOut);
+
+        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
+
+        amountOut = Utils.upscale(amountOut, tokens.scalingFactors[indexOut]);
+
+        uint256[] memory balancesWithoutBpt = Utils.balancesWithoutBpt(
+            tokens.balances,
+            indexBpt
+        );
+
+        uint256[] memory amountsOutWithoutBpt = new uint256[](
+            balancesWithoutBpt.length
+        );
+        amountsOutWithoutBpt[
+            Utils.indexWithoutBpt(indexOut, indexBpt)
+        ] = amountOut;
+
+        uint256 amountIn = StableMath._calcBptInGivenExactTokensOut(
+            amplification,
+            balancesWithoutBpt,
+            amountsOutWithoutBpt,
+            virtualSupply,
+            0
+        );
+
+        return
+            Utils.addSwapFee(
+                pool,
+                Utils.downscaleUp(amountIn, tokens.scalingFactors[indexBpt])
+            );
     }
 
     function query(address _pool)

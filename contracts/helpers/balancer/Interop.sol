@@ -58,4 +58,19 @@ interface IVault {
             uint256[] memory balances,
             uint256 lastChangeBlock
         );
+
+    struct BatchSwapStep {
+        bytes32 poolId;
+        uint256 assetInIndex;
+        uint256 assetOutIndex;
+        uint256 amount;
+        bytes userData;
+    }
+
+    struct FundManagement {
+        address sender;
+        bool fromInternalBalance;
+        address recipient;
+        bool toInternalBalance;
+    }
 }

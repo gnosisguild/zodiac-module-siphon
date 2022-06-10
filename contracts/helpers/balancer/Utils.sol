@@ -11,6 +11,17 @@ import "./Interop.sol";
 library Utils {
     using FixedPoint for uint256;
 
+    function addSwapFee(address pool, uint256 amount)
+        public
+        view
+        returns (uint256)
+    {
+        return
+            amount.divUp(
+                FixedPoint.ONE.sub(IPool(pool).getSwapFeePercentage())
+            );
+    }
+
     function subtractSwapFee(address pool, uint256 amount)
         public
         view
