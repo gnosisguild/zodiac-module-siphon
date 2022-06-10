@@ -22,18 +22,23 @@ contract BoostedPoolAdapter is ILiquidityPosition {
     address public gauge;
     address public tokenOut;
 
+    uint256 public slippage;
     uint256 public parityTolerance;
 
     constructor(
         address _investor,
         address _pool,
+        address _gauge,
         address _tokenOut
     ) {
         investor = _investor;
         vault = IPool(_pool).getVault();
         boostedPool = _pool;
+        gauge = _gauge;
+
         tokenOut = _tokenOut;
 
+        slippage = FixedPoint.ONE;
         // 50 basis points
         parityTolerance = FixedPoint.ONE.sub(995 * 1e15);
     }
@@ -47,8 +52,8 @@ contract BoostedPoolAdapter is ILiquidityPosition {
     }
 
     function isWithdrawalAvailable() external view override returns (bool) {
-        // we should pick one of those
-        return isInParity() && isInTandem();
+        // we should make sure the pool has at least 1M nomimal value?
+        return isInParity();
     }
 
     function withdrawalInstructions(uint256 amountOut)
@@ -61,7 +66,12 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             bytes memory
         )
     {
-        uint256 maxAmountIn = maxInGivenOut(amountOut);
+        uint256 amountIn = BoostedPoolHelper.calcBptInGivenStableOut(
+            boostedPool,
+            tokenOut,
+            amountOut
+        );
+        uint256 maxAmountIn = amountIn.mulDown(slippage);
         (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
 
         if (maxAmountIn <= unstakedBalance) {
@@ -82,6 +92,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
 
         uint256 delta = 0;
         for (uint256 i = 1; i < stableTokens.length; i++) {
+            // should we use calcPriceIndirect?
             uint256 price = BoostedPoolHelper.calcPrice(
                 boostedPool,
                 stableTokens[0],
@@ -96,34 +107,14 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         return delta < parityTolerance;
     }
 
-    function isInTandem() public view returns (bool) {
-        address[] memory stableTokens = BoostedPoolHelper.findStableTokens(
-            boostedPool
-        );
-
-        uint256 delta = 0;
-        for (uint256 i = 1; i < stableTokens.length; i++) {
-            uint256 price = BoostedPoolHelper.calcPriceIndirect(
-                boostedPool,
-                stableTokens[0],
-                stableTokens[i]
-            );
-            uint256 nextDelta = price > FixedPoint.ONE
-                ? price - FixedPoint.ONE
-                : FixedPoint.ONE - price;
-
-            delta = Math.max(delta, nextDelta);
-        }
-
-        return delta < parityTolerance;
-    }
-
     function balanceNominal() public view returns (uint256) {
-        return balanceNominal(IERC20(boostedPool).balanceOf(investor));
+        (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
+        return balanceNominal(unstakedBalance + stakedBalance);
     }
 
     function balanceEffective() public view returns (uint256) {
-        return balanceEffective(IERC20(boostedPool).balanceOf(investor));
+        (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
+        return balanceEffective(unstakedBalance + stakedBalance);
     }
 
     function balanceNominal(uint256 bptAmount) public view returns (uint256) {
@@ -131,7 +122,6 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             IStablePhantomPool(boostedPool).getVirtualSupply()
         );
         uint256 nominalValue = BoostedPoolHelper.nominalValue(boostedPool);
-
         return ratio.mulDown(nominalValue);
     }
 
@@ -176,8 +166,6 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         value = 0;
         data = abi.encodeWithSignature("withdraw(uint256)", amountIn);
     }
-
-    // slippage out
 
     function encodeExit(uint256 maxAmountIn, uint256 amountOut)
         internal

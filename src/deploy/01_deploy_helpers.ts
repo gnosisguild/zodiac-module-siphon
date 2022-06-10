@@ -15,7 +15,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     Math: allDeployments.Math.address,
     LogExpMath: allDeployments.LogExpMath.address,
     FixedPoint: allDeployments.FixedPoint.address,
-    LinearMathMath: allDeployments.LinearMath.address,
+    LinearMath: allDeployments.LinearMath.address,
     StableMath: allDeployments.StableMath.address,
   };
 
@@ -26,7 +26,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  const txLinearPool = await deploy("LinearPool", {
+  const txLinearPool = await deploy("LinearPoolHelper", {
     from: deployer,
     args: [],
     libraries: {
@@ -36,7 +36,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  const txStablePhantomPool = await deploy("StablePhantomPool", {
+  const txStablePhantomPool = await deploy("StablePhantomPoolHelper", {
     from: deployer,
     args: [],
     libraries: {
@@ -46,14 +46,14 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  await deploy("BoostedPool", {
+  await deploy("BoostedPoolHelper", {
     from: deployer,
     args: [],
     libraries: {
       ...libraries,
       Utils: txUtils.address,
-      LinearPool: txLinearPool.address,
-      StablePhantomPool: txStablePhantomPool.address,
+      LinearPoolHelper: txLinearPool.address,
+      StablePhantomPoolHelper: txStablePhantomPool.address,
     },
     log: true,
   });
