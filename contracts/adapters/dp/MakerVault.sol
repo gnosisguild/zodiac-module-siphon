@@ -4,6 +4,9 @@ pragma solidity ^0.8.6;
 import "../../IDebtPosition.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 
+uint256 constant WAD = 10**18;
+uint256 constant RAY = 10**27;
+
 interface ICDPManager {
     function ilks(uint256 vault) external view returns (bytes32 ilk);
 
@@ -199,7 +202,7 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         emit SetRatioTrigger(ratioTrigger);
     }
 
-    // @dev Returns the current collateralization ratio of the vault.
+    // @dev Returns the current collateralization ratio of the vault as ray.
     function ratio() public view override returns (uint256) {
         // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
         // or
@@ -212,7 +215,7 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         (ink, art) = IVat(vat).urns(ilk, urnHandler);
         (, rate, spot, , ) = IVat(vat).ilks(ilk);
         (, mat) = ISpotter(spotter).ilks(ilk);
-        return (ink * spot * mat) / (art * rate);
+        return (ink * spot * mat) / ((art * rate) / RAY) / RAY;
     }
 
     // @dev Returns the amount of Dai that should be repaid to bring vault to target ratio.
