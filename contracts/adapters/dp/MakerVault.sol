@@ -54,7 +54,7 @@ interface IVat {
 }
 
 // temporary: marked abstract to silence compiler
-abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
+contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
     event AdapterSetuP(
@@ -62,9 +62,6 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         address assetCollateral,
         address assetDebt,
         address cdpManager,
-        address daiJoin,
-        address dsProxy,
-        address dsProxyActions,
         address spotter,
         address urnHandler,
         address vat,
@@ -95,9 +92,6 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         address _assetCollateral,
         address _assetDebt,
         address _cdpManager,
-        address _daiJoin,
-        address _dsProxy,
-        address _dsProxyActions,
         address _spotter,
         uint256 _ratioTarget,
         uint256 _ratioTrigger,
@@ -108,9 +102,6 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             _assetCollateral,
             _assetDebt,
             _cdpManager,
-            _daiJoin,
-            _dsProxy,
-            _dsProxyActions,
             _spotter,
             _ratioTarget,
             _ratioTrigger,
@@ -125,9 +116,6 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             address _assetCollateral,
             address _assetDebt,
             address _cdpManager,
-            address _daiJoin,
-            address _dsProxy,
-            address _dsProxyActions,
             address _spotter,
             uint256 _ratioTarget,
             uint256 _ratioTrigger,
@@ -135,9 +123,6 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         ) = abi.decode(
                 initParams,
                 (
-                    address,
-                    address,
-                    address,
                     address,
                     address,
                     address,
@@ -153,9 +138,6 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         assetCollateral = _assetCollateral;
         assetDebt = _assetDebt;
         cdpManager = _cdpManager;
-        daiJoin = _daiJoin;
-        dsProxy = _dsProxy;
-        dsProxyActions = _dsProxyActions;
         spotter = _spotter;
 
         ratioTarget = _ratioTarget;
@@ -173,9 +155,6 @@ abstract contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             assetCollateral,
             assetDebt,
             cdpManager,
-            daiJoin,
-            dsProxy,
-            dsProxyActions,
             spotter,
             urnHandler,
             vat,
