@@ -22,7 +22,7 @@ const fetch = async (): Promise<void> => {
   const [, rate, spot, , dust] = await vat.ilks(ilk); // ray
   const [pip, mat] = await spotter.ilks(ilk); // ray
   const debt = art.mul(rate).div(ray); // wad
-  const ratio = ink.mul(spot).mul(mat).div(debt).div(ray); // ray
+  const ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
 
   console.log("             urn: ", urn);
   console.log("      urnHandler: ", urnHandler);

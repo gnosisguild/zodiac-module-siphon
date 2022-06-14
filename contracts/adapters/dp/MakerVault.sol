@@ -57,7 +57,7 @@ interface IVat {
 contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
-    event AdapterSetuP(
+    event AdapterSetup(
         address owner,
         address assetCollateral,
         address assetDebt,
@@ -110,7 +110,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         setUp(initParams);
     }
 
-    function setUp(bytes memory initParams) public override {
+    function setUp(bytes memory initParams) public override initializer {
         (
             address _owner,
             address _assetCollateral,
@@ -150,8 +150,8 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
         transferOwnership(_owner);
 
-        emit AdapterSetuP(
-            owner(),
+        emit AdapterSetup(
+            _owner,
             assetCollateral,
             assetDebt,
             cdpManager,
@@ -194,7 +194,10 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         (ink, art) = IVat(vat).urns(ilk, urnHandler);
         (, rate, spot, , ) = IVat(vat).ilks(ilk);
         (, mat) = ISpotter(spotter).ilks(ilk);
-        return (ink * spot * mat) / ((art * rate) / RAY) / RAY;
+        // return (ink * spot * mat) / ((art * rate) / RAY) / RAY;
+        uint256 currentRatio = (((ink * spot) / RAY) * mat) /
+            ((art * rate) / RAY);
+        return currentRatio;
     }
 
     // @dev Returns the amount of Dai that should be repaid to bring vault to target ratio.
