@@ -16,17 +16,30 @@ describe("DP: Maker", async () => {
     const cdpManager = await CDPManager.deploy(vat.address);
     const Spotter = await hre.ethers.getContractFactory("MockSpot");
     const spotter = await Spotter.deploy();
+    const Dai = await hre.ethers.getContractFactory("TestToken");
+    const dai = await Dai.deploy(18);
+    const DaiJoin = await hre.ethers.getContractFactory("DaiJoin");
+    const daiJoin = await DaiJoin.deploy(vat.address, dai.address);
+    const DsProxy = await hre.ethers.getContractFactory("DssProxy");
+    const dsProxy = await DsProxy.deploy(user.address);
+    const DsProxyActions = await hre.ethers.getContractFactory(
+      "DssProxyActions"
+    );
+    const dsProxyActions = await DsProxyActions.deploy();
     const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
     const adapter = await Adapter.deploy(
+      dai.address, // assetDebt
       cdpManager.address, // cdpManager
-      AddressZero, // daiJoin
-      AddressZero, // dsProxy
-      AddressZero, // dsProxyActions
+      daiJoin.address, // daiJoin
+      dsProxy.address, // dsProxy
+      dsProxyActions.address, // dsProxyActions
       spotter.address, // spotter
       3000000000000000000000000000n, // ratio target
       2994000000000000000000000000n, // ratio trigger
       urn // vault
     );
+
+    await adapter.setAssetDebt(AddressZero);
 
     return {
       adapter,

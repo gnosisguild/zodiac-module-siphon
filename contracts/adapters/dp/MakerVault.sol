@@ -89,6 +89,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     uint256 public vault;
 
     constructor(
+        address _assetDebt,
         address _cdpManager,
         address _daiJoin,
         address _dsProxy,
@@ -99,6 +100,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         uint256 _vault
     ) {
         bytes memory initParams = abi.encode(
+            _assetDebt,
             _cdpManager,
             _daiJoin,
             _dsProxy,
@@ -113,6 +115,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     function setUp(bytes memory initParams) public override initializer {
         (
+            address _assetDebt,
             address _cdpManager,
             address _daiJoin,
             address _dsProxy,
@@ -129,6 +132,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
                     address,
                     address,
                     address,
+                    address,
                     uint256,
                     uint256,
                     uint256
@@ -136,7 +140,11 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             );
         __Ownable_init();
 
+        assetDebt = _assetDebt;
         cdpManager = _cdpManager;
+        daiJoin = _daiJoin;
+        dsProxy = _dsProxy;
+        dsProxyActions = _dsProxyActions;
         spotter = _spotter;
 
         ratioTarget = _ratioTarget;
