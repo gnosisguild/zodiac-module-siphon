@@ -5,7 +5,7 @@ import hre, { deployments, waffle } from "hardhat";
 const AddressZero = "0x0000000000000000000000000000000000000000";
 
 describe("DP: Maker", async () => {
-  const [user, anotherUser] = waffle.provider.getWallets();
+  const [user] = waffle.provider.getWallets();
 
   const baseSetup = deployments.createFixture(async () => {
     await deployments.fixture();
@@ -40,9 +40,14 @@ describe("DP: Maker", async () => {
   it("Returns Correct Ratio", async () => {
     const { adapter } = await baseSetup();
     const ratio = await adapter.ratio();
-    console.log(ratio.toString());
-
     const expectedRatio = BigNumber.from(3235057286664591397522280128n);
     expect(ratio).to.equal(expectedRatio);
+  });
+
+  it("Returns Correct Delta", async () => {
+    const { adapter } = await baseSetup();
+    const delta = await adapter.delta();
+    const expectedDelta = BigNumber.from(850381492464913306532836n);
+    expect(delta).to.equal(expectedDelta);
   });
 });

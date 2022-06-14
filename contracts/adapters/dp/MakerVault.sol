@@ -202,7 +202,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     // @dev Returns the amount of Dai that should be repaid to bring vault to target ratio.
     // @return Amount of Dai necessary that should be repaid to bring vault to target ratio.
-    function readDelta() external view override returns (uint256 amount) {
+    function delta() external view override returns (uint256 amount) {
         uint256 art;
         uint256 rate;
         uint256 debt;
