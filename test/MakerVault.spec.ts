@@ -18,10 +18,10 @@ describe("DP: Maker", async () => {
     const spotter = await Spotter.deploy();
     const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
     const adapter = await Adapter.deploy(
-      user.address, // owner
-      AddressZero, // collateral asset
-      AddressZero, // debt asset
       cdpManager.address, // cdpManager
+      AddressZero, // daiJoin
+      AddressZero, // dsProxy
+      AddressZero, // dsProxyActions
       spotter.address, // spotter
       3000000000000000000000000000n, // ratio target
       2994000000000000000000000000n, // ratio trigger

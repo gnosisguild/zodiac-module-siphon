@@ -55,13 +55,15 @@ interface IVat {
 
 // temporary: marked abstract to silence compiler
 contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
+    event SetAssetCollateral(address assetCollateral);
+    event SetAssetDebt(address assetDebt);
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
     event AdapterSetup(
-        address owner,
-        address assetCollateral,
-        address assetDebt,
         address cdpManager,
+        address daiJoin,
+        address dsProxy,
+        address dsProxyActions,
         address spotter,
         address urnHandler,
         address vat,
@@ -71,7 +73,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         uint256 vault
     );
 
-    address public override assetCollateral;
     address public override assetDebt;
     address public cdpManager;
     address public daiJoin;
@@ -88,20 +89,20 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     uint256 public vault;
 
     constructor(
-        address _owner,
-        address _assetCollateral,
-        address _assetDebt,
         address _cdpManager,
+        address _daiJoin,
+        address _dsProxy,
+        address _dsProxyActions,
         address _spotter,
         uint256 _ratioTarget,
         uint256 _ratioTrigger,
         uint256 _vault
     ) {
         bytes memory initParams = abi.encode(
-            _owner,
-            _assetCollateral,
-            _assetDebt,
             _cdpManager,
+            _daiJoin,
+            _dsProxy,
+            _dsProxyActions,
             _spotter,
             _ratioTarget,
             _ratioTrigger,
@@ -112,10 +113,10 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     function setUp(bytes memory initParams) public override initializer {
         (
-            address _owner,
-            address _assetCollateral,
-            address _assetDebt,
             address _cdpManager,
+            address _daiJoin,
+            address _dsProxy,
+            address _dsProxyActions,
             address _spotter,
             uint256 _ratioTarget,
             uint256 _ratioTrigger,
@@ -135,8 +136,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             );
         __Ownable_init();
 
-        assetCollateral = _assetCollateral;
-        assetDebt = _assetDebt;
         cdpManager = _cdpManager;
         spotter = _spotter;
 
@@ -148,13 +147,11 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         urnHandler = ICDPManager(cdpManager).urns(vault);
         vat = ICDPManager(cdpManager).vat();
 
-        transferOwnership(_owner);
-
         emit AdapterSetup(
-            _owner,
-            assetCollateral,
-            assetDebt,
             cdpManager,
+            daiJoin,
+            dsProxy,
+            dsProxyActions,
             spotter,
             urnHandler,
             vat,
@@ -163,6 +160,14 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             ratioTrigger,
             vault
         );
+    }
+
+    // @dev Sets the address of debtAsset (dai)
+    // @param _assetDebt The address of debtAsset (dai)
+    // @notice Can only be called by owner.
+    function setAssetDebt(address _assetDebt) external onlyOwner {
+        assetDebt = _assetDebt;
+        emit SetAssetDebt(assetDebt);
     }
 
     // @dev Sets the target callateralization ratio for the vault.
@@ -230,7 +235,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         to = dsProxy;
         value = 0;
         bytes memory wipe = abi.encodeWithSignature(
-            "wipe",
+            "safeWipe",
             cdpManager,
             daiJoin,
             vault,

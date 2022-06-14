@@ -2,8 +2,6 @@
 pragma solidity ^0.8.6;
 
 interface IDebtPosition {
-    function assetCollateral() external view returns (address);
-
     function assetDebt() external view returns (address);
 
     function setRatioTrigger(uint256 ratio) external;
