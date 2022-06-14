@@ -5,43 +5,72 @@ pragma solidity ^0.8.6;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
+import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
+
 import "../../../ILiquidityPosition.sol";
 
 import "../../../helpers/balancer/BoostedPool.sol";
 
-contract BoostedPoolAdapter is ILiquidityPosition {
+contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
     using FixedPoint for uint256;
 
     error NotEnoughLitquidity();
 
     address public multisend;
 
-    address public investor;
+    address public avatar;
     address public vault;
     address public boostedPool;
     address public gauge;
     address public tokenOut;
 
-    uint256 public slippage;
     uint256 public parityTolerance;
+    uint256 public slippage;
 
     constructor(
-        address _investor,
+        address _owner,
+        address _avatar,
         address _pool,
         address _gauge,
         address _tokenOut
     ) {
+        bytes memory initParams = abi.encode(
+            _owner,
+            _avatar,
+            _pool,
+            _gauge,
+            _tokenOut
+        );
+        setUp(initParams);
+    }
+
+    function setUp(bytes memory initParams) public override {
+        (
+            address _owner,
+            address _avatar,
+            address _pool,
+            address _gauge,
+            address _tokenOut
+        ) = abi.decode(
+                initParams,
+                (address, address, address, address, address)
+            );
+        __Ownable_init();
+
         multisend = 0x8D29bE29923b68abfDD21e541b9374737B49cdAD;
-        investor = _investor;
+        avatar = _avatar;
         vault = IPool(_pool).getVault();
         boostedPool = _pool;
         gauge = _gauge;
 
         tokenOut = _tokenOut;
 
-        slippage = FixedPoint.ONE;
+        // 5 basis points
+        parityTolerance = FixedPoint.ONE.sub(995 * 1e14);
         // 50 basis points
-        parityTolerance = FixedPoint.ONE.sub(995 * 1e15);
+        slippage = FixedPoint.ONE.sub(995 * 1e14);
+
+        transferOwnership(_owner);
     }
 
     function asset() external view override returns (address) {
@@ -79,10 +108,11 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             ? Math.min(stakedBalance, maxAmountIn - unstakedBalance)
             : 0;
 
-        if(amountToUnstake > 0){
-            return encodeUnstakeAndExit(amountToUnstake, maxAmountIn, amountOut);
+        if (amountToUnstake > 0) {
+            return
+                encodeUnstakeAndExit(amountToUnstake, maxAmountIn, amountOut);
         } else {
-             return encodeExit(maxAmountIn, amountOut);
+            return encodeExit(maxAmountIn, amountOut);
         }
     }
 
@@ -140,8 +170,8 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         view
         returns (uint256 unstakedBalance, uint256 stakedBalance)
     {
-        unstakedBalance = IERC20(boostedPool).balanceOf(investor);
-        stakedBalance = IERC20(gauge).balanceOf(investor);
+        unstakedBalance = IERC20(boostedPool).balanceOf(avatar);
+        stakedBalance = IERC20(gauge).balanceOf(avatar);
     }
 
     function encodeUnstake(uint256 amount)
@@ -210,9 +240,9 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             swapSteps,
             assets,
             IVault.FundManagement({
-                sender: investor,
+                sender: avatar,
                 fromInternalBalance: false,
-                recipient: investor,
+                recipient: avatar,
                 toInternalBalance: false
             }),
             limits,
@@ -312,5 +342,17 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         );
 
         return (price1, price2);
+    }
+
+    function setMultisend(address _multisend) external onlyOwner {
+        multisend = _multisend;
+    }
+
+    function setParityTolerane(uint256 _parityTolerance) external onlyOwner {
+        parityTolerance = _parityTolerance;
+    }
+
+    function setSlippage(uint256 _slippage) external onlyOwner {
+        slippage = _slippage;
     }
 }
