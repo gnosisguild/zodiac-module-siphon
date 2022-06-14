@@ -14,7 +14,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
 
     error NotEnoughLitquidity();
 
-    address public multisig;
+    address public multisend;
 
     address public investor;
     address public vault;
@@ -31,6 +31,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         address _gauge,
         address _tokenOut
     ) {
+        multisend = 0x8D29bE29923b68abfDD21e541b9374737B49cdAD;
         investor = _investor;
         vault = IPool(_pool).getVault();
         boostedPool = _pool;
@@ -71,17 +72,17 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             tokenOut,
             amountOut
         );
-        uint256 maxAmountIn = amountIn.mulDown(slippage);
+        uint256 maxAmountIn = amountIn.add(amountIn.mulDown(slippage));
         (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
 
-        if (maxAmountIn <= unstakedBalance) {
-            return encodeExit(maxAmountIn, amountOut);
-        } else if (maxAmountIn < unstakedBalance + stakedBalance) {
-            // TODO multisendEncode(encodeUnstake(), encodeExit())
-            return encodeUnstake(maxAmountIn - unstakedBalance);
+        uint256 amountToUnstake = maxAmountIn > unstakedBalance
+            ? Math.min(stakedBalance, maxAmountIn - unstakedBalance)
+            : 0;
+
+        if(amountToUnstake > 0){
+            return encodeUnstakeAndExit(amountToUnstake, maxAmountIn, amountOut);
         } else {
-            // TODO multisendEncode(encodeUnstake(), encodeExit())
-            return encodeUnstake(unstakedBalance);
+             return encodeExit(maxAmountIn, amountOut);
         }
     }
 
@@ -143,17 +144,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         stakedBalance = IERC20(gauge).balanceOf(investor);
     }
 
-    function maxInGivenOut(uint256 amountOut) private view returns (uint256) {
-        // TODO apply slippage
-        return
-            BoostedPoolHelper.calcBptInGivenStableOut(
-                boostedPool,
-                tokenOut,
-                amountOut
-            );
-    }
-
-    function encodeUnstake(uint256 amountIn)
+    function encodeUnstake(uint256 amount)
         internal
         view
         returns (
@@ -164,7 +155,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
     {
         to = gauge;
         value = 0;
-        data = abi.encodeWithSignature("withdraw(uint256)", amountIn);
+        data = abi.encodeWithSignature("withdraw(uint256)", amount);
     }
 
     function encodeExit(uint256 maxAmountIn, uint256 amountOut)
@@ -199,7 +190,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             assetInIndex: 1,
             assetOutIndex: 2,
             amount: amountOut,
-            userData: "0x"
+            userData: hex""
         });
 
         swapSteps[1] = IVault.BatchSwapStep({
@@ -207,7 +198,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             assetInIndex: 0,
             assetOutIndex: 1,
             amount: 0,
-            userData: "0x"
+            userData: hex""
         });
 
         // the actual return values
@@ -215,7 +206,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         value = 0;
         data = abi.encodeWithSelector(
             0x945bcec9,
-            uint8(0),
+            uint8(IVault.SwapKind.GIVEN_OUT),
             swapSteps,
             assets,
             IVault.FundManagement({
@@ -226,6 +217,47 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             }),
             limits,
             uint256(999999999999999999)
+        );
+    }
+
+    function encodeUnstakeAndExit(
+        uint256 amontUnstake,
+        uint256 maxAmountIn,
+        uint256 amountOut
+    )
+        public
+        view
+        returns (
+            address to,
+            uint256 value,
+            bytes memory data
+        )
+    {
+        (address to1, uint256 value1, bytes memory data1) = encodeUnstake(
+            amontUnstake
+        );
+        (address to2, uint256 value2, bytes memory data2) = encodeExit(
+            maxAmountIn,
+            amountOut
+        );
+
+        to = multisend;
+        value = 0;
+        data = abi.encodePacked(
+            abi.encodePacked(
+                uint8(0),
+                to1,
+                value1,
+                uint256(data1.length),
+                data1
+            ),
+            abi.encodePacked(
+                uint8(0),
+                to2,
+                value2,
+                uint256(data2.length),
+                data2
+            )
         );
     }
 
