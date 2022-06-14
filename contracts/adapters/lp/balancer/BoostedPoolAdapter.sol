@@ -65,10 +65,10 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
         tokenOut = _tokenOut;
 
-        // 5 basis points
-        parityTolerance = FixedPoint.ONE.sub(995 * 1e14);
+        // 20 basis points
+        parityTolerance = 2e15;
         // 50 basis points
-        slippage = FixedPoint.ONE.sub(995 * 1e14);
+        slippage = 5e15;
 
         transferOwnership(_owner);
     }
@@ -78,7 +78,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
     }
 
     function balance() external view override returns (uint256) {
-        return balanceNominal();
+        return balanceEffective();
     }
 
     function isWithdrawalAvailable() external view override returns (bool) {
@@ -104,15 +104,27 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         uint256 maxAmountIn = amountIn.add(amountIn.mulDown(slippage));
         (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
 
+        // The balance function is getting the effectively available balance
+        // minus splippage, so if Siphon requests after query balance
+        // the following invariant should hold
+        require(
+            maxAmountIn < unstakedBalance + stakedBalance,
+            "Not enough BPT"
+        );
+
         uint256 amountToUnstake = maxAmountIn > unstakedBalance
             ? Math.min(stakedBalance, maxAmountIn - unstakedBalance)
             : 0;
 
         if (amountToUnstake > 0) {
             return
-                encodeUnstakeAndExit(amountToUnstake, maxAmountIn, amountOut);
+                encodeMultisend(
+                    encodeUnstake(amountToUnstake),
+                    encodeExit(maxAmountIn, amountOut)
+                );
         } else {
-            return encodeExit(maxAmountIn, amountOut);
+            Transaction memory exit = encodeExit(maxAmountIn, amountOut);
+            return (exit.to, exit.value, exit.data);
         }
     }
 
@@ -143,11 +155,6 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return balanceNominal(unstakedBalance + stakedBalance);
     }
 
-    function balanceEffective() public view returns (uint256) {
-        (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
-        return balanceEffective(unstakedBalance + stakedBalance);
-    }
-
     function balanceNominal(uint256 bptAmount) public view returns (uint256) {
         uint256 ratio = bptAmount.divDown(
             IStablePhantomPool(boostedPool).getVirtualSupply()
@@ -156,17 +163,20 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return ratio.mulDown(nominalValue);
     }
 
+    function balanceEffective() public view returns (uint256) {
+        (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
+        return balanceEffective(unstakedBalance + stakedBalance);
+    }
+
     function balanceEffective(uint256 bptAmount) public view returns (uint256) {
         return
-            BoostedPoolHelper.calcStableOutGivenBptIn(
-                boostedPool,
-                bptAmount,
-                tokenOut
-            );
+            BoostedPoolHelper
+                .calcStableOutGivenBptIn(boostedPool, bptAmount, tokenOut)
+                .mulDown((FixedPoint.ONE - slippage));
     }
 
     function bptBalances()
-        internal
+        public
         view
         returns (uint256 unstakedBalance, uint256 stakedBalance)
     {
@@ -177,25 +187,21 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
     function encodeUnstake(uint256 amount)
         internal
         view
-        returns (
-            address to,
-            uint256 value,
-            bytes memory data
-        )
+        returns (Transaction memory)
     {
-        to = gauge;
-        value = 0;
-        data = abi.encodeWithSignature("withdraw(uint256)", amount);
+        //abi.encodeWithSignature("withdraw(uint256)", amount);
+        return
+            Transaction({
+                to: gauge,
+                value: 0,
+                data: abi.encodeWithSelector(0x2e1a7d4d, amount)
+            });
     }
 
     function encodeExit(uint256 maxAmountIn, uint256 amountOut)
         internal
         view
-        returns (
-            address to,
-            uint256 value,
-            bytes memory data
-        )
+        returns (Transaction memory)
     {
         address linearPool = BoostedPoolHelper.findLinearPool(
             boostedPool,
@@ -232,29 +238,28 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         });
 
         // the actual return values
-        to = vault;
-        value = 0;
-        data = abi.encodeWithSelector(
-            0x945bcec9,
-            uint8(IVault.SwapKind.GIVEN_OUT),
-            swapSteps,
-            assets,
-            IVault.FundManagement({
-                sender: avatar,
-                fromInternalBalance: false,
-                recipient: avatar,
-                toInternalBalance: false
-            }),
-            limits,
-            uint256(999999999999999999)
-        );
+        return
+            Transaction({
+                to: vault,
+                value: 0,
+                data: abi.encodeWithSelector(
+                    0x945bcec9,
+                    uint8(IVault.SwapKind.GIVEN_OUT),
+                    swapSteps,
+                    assets,
+                    IVault.FundManagement({
+                        sender: avatar,
+                        fromInternalBalance: false,
+                        recipient: avatar,
+                        toInternalBalance: false
+                    }),
+                    limits,
+                    uint256(999999999999999999)
+                )
+            });
     }
 
-    function encodeUnstakeAndExit(
-        uint256 amontUnstake,
-        uint256 maxAmountIn,
-        uint256 amountOut
-    )
+    function encodeMultisend(Transaction memory tx1, Transaction memory tx2)
         public
         view
         returns (
@@ -263,30 +268,22 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
             bytes memory data
         )
     {
-        (address to1, uint256 value1, bytes memory data1) = encodeUnstake(
-            amontUnstake
-        );
-        (address to2, uint256 value2, bytes memory data2) = encodeExit(
-            maxAmountIn,
-            amountOut
-        );
-
         to = multisend;
         value = 0;
         data = abi.encodePacked(
             abi.encodePacked(
                 uint8(0),
-                to1,
-                value1,
-                uint256(data1.length),
-                data1
+                tx1.to,
+                tx1.value,
+                uint256(tx1.data.length),
+                tx1.data
             ),
             abi.encodePacked(
                 uint8(0),
-                to2,
-                value2,
-                uint256(data2.length),
-                data2
+                tx2.to,
+                tx2.value,
+                uint256(tx2.data.length),
+                tx2.data
             )
         );
     }
@@ -324,26 +321,6 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return (price1, price2);
     }
 
-    function _debugPricesIndirect() public view returns (uint256, uint256) {
-        address[] memory stableTokens = BoostedPoolHelper.findStableTokens(
-            boostedPool
-        );
-
-        uint256 price1 = BoostedPoolHelper.calcPriceIndirect(
-            boostedPool,
-            stableTokens[0],
-            stableTokens[1]
-        );
-
-        uint256 price2 = BoostedPoolHelper.calcPriceIndirect(
-            boostedPool,
-            stableTokens[0],
-            stableTokens[2]
-        );
-
-        return (price1, price2);
-    }
-
     function setMultisend(address _multisend) external onlyOwner {
         multisend = _multisend;
     }
@@ -354,5 +331,11 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function setSlippage(uint256 _slippage) external onlyOwner {
         slippage = _slippage;
+    }
+
+    struct Transaction {
+        address to;
+        uint256 value;
+        bytes data;
     }
 }
