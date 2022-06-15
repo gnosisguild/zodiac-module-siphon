@@ -2,10 +2,12 @@
 pragma solidity ^0.8.6;
 
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
+
+import "./MultisendEncoder.sol";
 import "./IDebtPosition.sol";
 import "./ILiquidityPosition.sol";
 
-contract Siphon is Module {
+contract Siphon is Module, MultisendEncoder {
     mapping(address => bool) public dps;
     mapping(address => bool) public lps;
 
@@ -119,13 +121,18 @@ contract Siphon is Module {
         address to;
         uint256 value;
         bytes memory data;
+        Enum.Operation operation;
 
-        (to, value, data) = lp.withdrawalInstructions(amount);
+        (to, value, data, operation) = encodeMultisend(
+            lp.withdrawalInstructions(amount)
+        );
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert WithdrawalFailed();
         }
 
-        (to, value, data) = dp.paymentInstructions(amount);
+        (to, value, data, operation) = encodeMultisend(
+            dp.paymentInstructions(amount)
+        );
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert PaymentFailed();
         }

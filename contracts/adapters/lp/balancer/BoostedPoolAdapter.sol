@@ -90,11 +90,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         external
         view
         override
-        returns (
-            address,
-            uint256,
-            bytes memory
-        )
+        returns (Transaction[] memory)
     {
         uint256 amountIn = BoostedPoolHelper.calcBptInGivenStableOut(
             boostedPool,
@@ -116,16 +112,16 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
             ? Math.min(stakedBalance, maxAmountIn - unstakedBalance)
             : 0;
 
+        Transaction[] memory result;
         if (amountToUnstake > 0) {
-            return
-                encodeMultisend(
-                    encodeUnstake(amountToUnstake),
-                    encodeExit(maxAmountIn, amountOut)
-                );
+            result = new Transaction[](2);
+            result[0] = encodeUnstake(amountToUnstake);
+            result[1] = encodeExit(maxAmountIn, amountOut);
         } else {
-            Transaction memory exit = encodeExit(maxAmountIn, amountOut);
-            return (exit.to, exit.value, exit.data);
+            result = new Transaction[](1);
+            result[0] = encodeExit(maxAmountIn, amountOut);
         }
+        return result;
     }
 
     function isInParity() public view returns (bool) {
@@ -194,7 +190,8 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
             Transaction({
                 to: gauge,
                 value: 0,
-                data: abi.encodeWithSelector(0x2e1a7d4d, amount)
+                data: abi.encodeWithSelector(0x2e1a7d4d, amount),
+                operation: Enum.Operation.Call
             });
     }
 
@@ -255,37 +252,9 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
                     }),
                     limits,
                     uint256(999999999999999999)
-                )
+                ),
+                operation: Enum.Operation.Call
             });
-    }
-
-    function encodeMultisend(Transaction memory tx1, Transaction memory tx2)
-        public
-        view
-        returns (
-            address to,
-            uint256 value,
-            bytes memory data
-        )
-    {
-        to = multisend;
-        value = 0;
-        data = abi.encodePacked(
-            abi.encodePacked(
-                uint8(0),
-                tx1.to,
-                tx1.value,
-                uint256(tx1.data.length),
-                tx1.data
-            ),
-            abi.encodePacked(
-                uint8(0),
-                tx2.to,
-                tx2.value,
-                uint256(tx2.data.length),
-                tx2.data
-            )
-        );
     }
 
     function _debugPriceDeltas() public view returns (uint256, uint256) {
@@ -331,11 +300,5 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function setSlippage(uint256 _slippage) external onlyOwner {
         slippage = _slippage;
-    }
-
-    struct Transaction {
-        address to;
-        uint256 value;
-        bytes data;
     }
 }
