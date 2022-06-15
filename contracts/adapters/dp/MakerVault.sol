@@ -241,7 +241,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         )
     {
         bytes memory wipe = abi.encodeWithSignature(
-            "wipe",
+            "wipe(address,address,uint256,uint256)",
             cdpManager,
             daiJoin,
             vault,
@@ -250,6 +250,10 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
         to = dsProxy;
         value = 0;
-        data = abi.encodeWithSignature("execute", 0, dsProxyActions, wipe);
+        data = abi.encodeWithSignature(
+            "execute(address,bytes)",
+            dsProxyActions,
+            wipe
+        );
     }
 }

@@ -49,11 +49,26 @@ const config: HardhatUserConfig = {
     sources: "contracts",
   },
   solidity: {
-    compilers: [{ version: "0.8.6" }, { version: "0.6.12" }],
+    compilers: [
+      { version: "0.8.6" },
+      { version: "0.6.12" },
+      { version: "0.4.23" },
+    ],
     settings: {
       optimizer: {
         enabled: true,
         runs: 1,
+      },
+    },
+    overrides: {
+      "contracts/test/DssProxy.sol": {
+        version: "0.4.23",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
     },
   },

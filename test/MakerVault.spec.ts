@@ -20,8 +20,10 @@ describe("DP: Maker", async () => {
     const dai = await Dai.deploy(18);
     const DaiJoin = await hre.ethers.getContractFactory("DaiJoin");
     const daiJoin = await DaiJoin.deploy(vat.address, dai.address);
-    const DsProxy = await hre.ethers.getContractFactory("DssProxy");
-    const dsProxy = await DsProxy.deploy(user.address);
+    const Avatar = await hre.ethers.getContractFactory("TestAvatar");
+    const avatar = await Avatar.deploy();
+    const DSProxy = await hre.ethers.getContractFactory("DSProxy");
+    const dsProxy = await DSProxy.deploy(avatar.address);
     const DsProxyActions = await hre.ethers.getContractFactory(
       "DssProxyActions"
     );
@@ -72,10 +74,8 @@ describe("DP: Maker", async () => {
     );
     console.log(dsProxy.address);
     console.log(instructions);
-    const expectedTo = dsProxy.address;
-    const expectedValue = 0;
     const expectedData =
-      "0x4b6661990000000000000000000000005ef30b9986345249bc32d8928b7ee64de9435e390000000000000000000000009759a6ac90977b93b58547b4a71c78317f391a280000000000000000000000000000000000000000000000000000000000006ad900000000000000000000000000000000000000000006c8e72e7bf2b658b6d5ed";
+      "0x1cff79cd0000000000000000000000008a791620dd6260079bf849dc5567adc3f2fdc318000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000844b666199000000000000000000000000cf7ed3acca5a467e9e704c703e8d87f634fb0fc90000000000000000000000000165878a594ca255338adfa4d48449f69242eb8f000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000b41345e87a980d0ebbe400000000000000000000000000000000000000000000000000000000";
     expect(instructions.data).to.equal(expectedData);
   });
 });
