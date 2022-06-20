@@ -234,26 +234,26 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         external
         view
         override
-        returns (
-            address to,
-            uint256 value,
-            bytes memory data
-        )
+        returns (Transaction[] memory)
     {
-        bytes memory wipe = abi.encodeWithSignature(
-            "wipe(address,address,uint256,uint256)",
-            cdpManager,
-            daiJoin,
-            vault,
-            amount
-        );
+        Transaction[] memory result = new Transaction[](1);
+        result[0] = Transaction({
+            to: dsProxy,
+            value: 0,
+            data: abi.encodeWithSignature(
+                "execute",
+                dsProxyActions,
+                abi.encodeWithSignature(
+                    "wipe(address,address,uint256,uint256)",
+                    cdpManager,
+                    daiJoin,
+                    vault,
+                    amount
+                )
+            ),
+            operation: Enum.Operation.Call
+        });
 
-        to = dsProxy;
-        value = 0;
-        data = abi.encodeWithSignature(
-            "execute(address,bytes)",
-            dsProxyActions,
-            wipe
-        );
+        return result;
     }
 }
