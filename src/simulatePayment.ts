@@ -73,37 +73,19 @@ const simulatePayment = async (): Promise<void> => {
   );
 
   console.log("target ratio: ", targetRatio.toString());
-  console.log("trigger ratio: ", triggerRatio.toString(), "\n");
-
-  console.log(debt.mul(ray).div(targetRatio).toString());
-  console.log(debt.mul(ray).div(ratio).toString());
+  console.log("trigger ratio: ", triggerRatio.toString());
   console.log("\n");
 
   const delta = await adapter.delta();
-  console.log("Delta: ", delta.toString(), "\n");
+  console.log("Delta: ", delta.toString());
+  console.log("\n");
 
-  const [to, value, data] = await adapter.paymentInstructions(delta);
+  const [approve, repay] = await adapter.paymentInstructions(delta);
 
-  console.log(
-    "Payment Instructions\n--------------------",
-    "\nto: ",
-    to,
-    "\nvalue: ",
-    value.toString(),
-    "\nfrom: ",
-    data,
-    "\n"
-  );
-
-  // impersonate the treasury management safe
-  await hre.network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [safe.address],
-  });
-  const safeSigner = await hre.ethers.provider.getSigner(safe.address);
-
-  // approve Dai to proxy
-  await dai.connect(safeSigner).approve(proxy, delta);
+  console.log("Payment Instructions\n--------------------");
+  console.log("approve: ", approve);
+  console.log("repay: ", repay);
+  console.log("\n");
 
   // impersonate the GnosisDAO
   await hre.network.provider.request({
@@ -120,13 +102,27 @@ const simulatePayment = async (): Promise<void> => {
   // repay debt
   await safe
     .connect(dao)
-    .execTransactionFromModule(to, value.toString(), data, 0);
+    .execTransactionFromModule(
+      approve.to,
+      approve.value.toString(),
+      approve.data,
+      approve.operation
+    );
+
+  await safe
+    .connect(dao)
+    .execTransactionFromModule(
+      repay.to,
+      repay.value.toString(),
+      repay.data,
+      repay.operation
+    );
 
   console.log(
     "safe balance after: ",
-    (await dai.balanceOf(safe.address)).toString(),
-    "\n"
+    (await dai.balanceOf(safe.address)).toString()
   );
+  console.log("\n");
 
   ilk = await cdpManager.ilks(urn);
   [ink, art] = await vat.urns(ilk, urnHandler); // wad
@@ -139,6 +135,8 @@ const simulatePayment = async (): Promise<void> => {
   console.log("-----------");
   console.log("current debt: ", debt.toString());
   console.log("current ratio: ", ratio.toString());
+  console.log("target ratio: ", targetRatio.toString());
+  console.log("trigger ratio: ", triggerRatio.toString());
   console.log("\n");
 
   return;

@@ -237,13 +237,23 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         override
         returns (Transaction[] memory)
     {
-        Transaction[] memory result = new Transaction[](1);
+        Transaction[] memory result = new Transaction[](2);
         // TODO: add a call to dai.approve(dsProxy, amount)
         result[0] = Transaction({
+            to: assetDebt,
+            value: 0,
+            data: abi.encodeWithSignature(
+                "approve(address,uint256)",
+                dsProxy,
+                amount
+            ),
+            operation: Enum.Operation.Call
+        });
+        result[1] = Transaction({
             to: dsProxy,
             value: 0,
             data: abi.encodeWithSignature(
-                "execute",
+                "execute(address,bytes)",
                 dsProxyActions,
                 abi.encodeWithSignature(
                     "wipe(address,address,uint256,uint256)",
