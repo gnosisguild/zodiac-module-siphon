@@ -5,7 +5,7 @@ const wad = BigNumber.from(10).pow(BigNumber.from(18));
 const ray = BigNumber.from(10).pow(BigNumber.from(27));
 
 const simulatePayment = async (): Promise<void> => {
-  // steal some Dai from a whale and send it to our safe.
+  // steal some ETH and Dai from a whale and send it to our safes.
   const { getNamedAccounts } = hre;
   const { daiWhale, gnosisDAO } = await getNamedAccounts();
   await hre.network.provider.request({
@@ -23,6 +23,12 @@ const simulatePayment = async (): Promise<void> => {
   );
   const whaleBalance = await dai.balanceOf(daiWhale);
   await dai.connect(whale).transfer(safe.address, whaleBalance);
+  const tx = {
+    to: gnosisDAO,
+    // Convert currency unit from ether to wei
+    value: hre.ethers.utils.parseEther("10"),
+  };
+  await whale.sendTransaction(tx);
 
   // instantiate all of the Maker jazz
   const cdpManager = await hre.ethers.getContractAt(
@@ -64,11 +70,14 @@ const simulatePayment = async (): Promise<void> => {
     urn // vault
   );
 
-  const [to, value, data] = await adapter.paymentInstructions(debt);
+  const delta = await adapter.delta();
+  console.log("Delta: ", delta.toString(), "\n");
+
+  const [to, value, data] = await adapter.paymentInstructions(delta);
 
   console.log(
     "Payment Instructions\n--------------------",
-    "to: ",
+    "\nto: ",
     to,
     "\nvalue: ",
     value.toString(),
