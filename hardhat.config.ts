@@ -20,7 +20,8 @@ const argv = yargs
 
 // Load environment variables.
 dotenv.config();
-const { INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK } = process.env;
+const { INFURA_KEY, ALCHEMY_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK } =
+  process.env;
 
 const DEFAULT_MNEMONIC =
   "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
@@ -75,6 +76,9 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      forking: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+      },
     },
     mainnet: {
       ...sharedNetworkConfig,
@@ -99,6 +103,7 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     deployer: 0,
+    daiWhale: "0xc08a8a9f809107c5a7be6d90e315e4012c99f39a",
   },
   mocha: {
     timeout: 2000000,
