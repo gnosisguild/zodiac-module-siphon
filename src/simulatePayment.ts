@@ -54,11 +54,12 @@ const simulatePayment = async (): Promise<void> => {
   console.log("-----------");
   console.log("current debt: ", debt.toString());
   console.log("current ratio: ", ratio.toString());
-  console.log("\n");
 
   // deploy adapter
   const proxy = "0xD758500ddEc05172aaA035911387C8E0e789CF6a";
   const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
+  const targetRatio = ratio.add(ratio.mul(10).div(100)); // 10% higher than current
+  const triggerRatio = ratio.add(ratio.div(100)); // 1% higher than current
   const adapter = await Adapter.deploy(
     dai.address, // assetDebt
     cdpManager.address, // cdpManager
@@ -66,10 +67,17 @@ const simulatePayment = async (): Promise<void> => {
     proxy, // dsProxy
     "0x82ecd135dce65fbc6dbdd0e4237e0af93ffd5038", // dsProxyActions
     spotter.address, // spotter
-    3000000000000000000000000000n, // ratio target
-    2994000000000000000000000000n, // ratio trigger
+    targetRatio, // ratio target
+    triggerRatio, // ratio trigger
     urn // vault
   );
+
+  console.log("target ratio: ", targetRatio.toString());
+  console.log("trigger ratio: ", triggerRatio.toString(), "\n");
+
+  console.log(debt.mul(ray).div(targetRatio).toString());
+  console.log(debt.mul(ray).div(ratio).toString());
+  console.log("\n");
 
   const delta = await adapter.delta();
   console.log("Delta: ", delta.toString(), "\n");

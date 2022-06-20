@@ -207,7 +207,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         (ink, art) = IVat(vat).urns(ilk, urnHandler);
         (, rate, spot, , ) = IVat(vat).ilks(ilk);
         (, mat) = ISpotter(spotter).ilks(ilk);
-        // return (ink * spot * mat) / ((art * rate) / RAY) / RAY;
         uint256 currentRatio = (((ink * spot) / RAY) * mat) /
             ((art * rate) / RAY);
         return currentRatio;
