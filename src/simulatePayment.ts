@@ -31,24 +31,24 @@ const simulatePayment = async (): Promise<void> => {
   await whale.sendTransaction(tx);
 
   // instantiate all of the Maker jazz
+  const urn = 27353;
   const cdpManager = await hre.ethers.getContractAt(
     "ICDPManager",
     "0x5ef30b9986345249bc32d8928B7ee64DE9435E39"
   );
-  const vatAddress = await cdpManager.vat();
-  const vat = await hre.ethers.getContractAt("IVat", vatAddress);
   const spotter = await hre.ethers.getContractAt(
     "ISpotter",
     "0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3"
   );
-  const urn = 27353;
+  const vatAddress = await cdpManager.vat();
+  const vat = await hre.ethers.getContractAt("IVat", vatAddress);
   const urnHandler = await cdpManager.urns(urn);
-  const ilk = await cdpManager.ilks(urn);
-  const [ink, art] = await vat.urns(ilk, urnHandler); // wad
-  const [, rate, spot, , dust] = await vat.ilks(ilk); // ray
-  const [pip, mat] = await spotter.ilks(ilk); // ray
-  const debt = art.mul(rate).div(ray); // wad
-  const ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
+  let ilk = await cdpManager.ilks(urn);
+  let [ink, art] = await vat.urns(ilk, urnHandler); // wad
+  let [, rate, spot, , dust] = await vat.ilks(ilk); // ray
+  let [pip, mat] = await spotter.ilks(ilk); // ray
+  let debt = art.mul(rate).div(ray); // wad
+  let ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
 
   console.log("Vault ", urn);
   console.log("-----------");
@@ -57,12 +57,13 @@ const simulatePayment = async (): Promise<void> => {
   console.log("\n");
 
   // deploy adapter
+  const proxy = "0xD758500ddEc05172aaA035911387C8E0e789CF6a";
   const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
   const adapter = await Adapter.deploy(
     dai.address, // assetDebt
     cdpManager.address, // cdpManager
     "0x9759A6Ac90977b93B58547b4A71c78317f391A28", // daiJoin
-    "0xD758500ddEc05172aaA035911387C8E0e789CF6a", // dsProxy
+    proxy, // dsProxy
     "0x82ecd135dce65fbc6dbdd0e4237e0af93ffd5038", // dsProxyActions
     spotter.address, // spotter
     3000000000000000000000000000n, // ratio target
@@ -86,6 +87,16 @@ const simulatePayment = async (): Promise<void> => {
     "\n"
   );
 
+  // impersonate the treasury management safe
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [safe.address],
+  });
+  const safeSigner = await hre.ethers.provider.getSigner(safe.address);
+
+  // approve Dai to proxy
+  await dai.connect(safeSigner).approve(proxy, delta);
+
   // impersonate the GnosisDAO
   await hre.network.provider.request({
     method: "hardhat_impersonateAccount",
@@ -98,14 +109,29 @@ const simulatePayment = async (): Promise<void> => {
     (await dai.balanceOf(safe.address)).toString()
   );
 
+  // repay debt
   await safe
     .connect(dao)
     .execTransactionFromModule(to, value.toString(), data, 0);
 
   console.log(
     "safe balance after: ",
-    (await dai.balanceOf(safe.address)).toString()
+    (await dai.balanceOf(safe.address)).toString(),
+    "\n"
   );
+
+  ilk = await cdpManager.ilks(urn);
+  [ink, art] = await vat.urns(ilk, urnHandler); // wad
+  [, rate, spot, , dust] = await vat.ilks(ilk); // ray
+  [pip, mat] = await spotter.ilks(ilk); // ray
+  debt = art.mul(rate).div(ray); // wad
+  ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
+
+  console.log("Vault ", urn);
+  console.log("-----------");
+  console.log("current debt: ", debt.toString());
+  console.log("current ratio: ", ratio.toString());
+  console.log("\n");
 
   return;
 };
