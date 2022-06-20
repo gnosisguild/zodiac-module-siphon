@@ -221,7 +221,9 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         (, art) = IVat(vat).urns(ilk, urnHandler);
         (, rate, , , ) = IVat(vat).ilks(ilk);
         debt = art * rate;
-        amount = (debt / ratioTarget) - (debt / ratio());
+        amount = debt / (ratioTarget - ratio());
+        // known: debt, targetRatio, ratio
+        // uknown: amount
     }
 
     // @dev Returns the call data to repay debt on the vault.
@@ -236,6 +238,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         returns (Transaction[] memory)
     {
         Transaction[] memory result = new Transaction[](1);
+        // TODO: add a call to dai.approve(dsProxy, amount)
         result[0] = Transaction({
             to: dsProxy,
             value: 0,
