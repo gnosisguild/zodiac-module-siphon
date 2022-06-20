@@ -104,6 +104,7 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: 0,
     daiWhale: "0xc08a8a9f809107c5a7be6d90e315e4012c99f39a",
+    gnosisDAO: "0x0DA0C3e52C977Ed3cBc641fF02DD271c3ED55aFe",
   },
   mocha: {
     timeout: 2000000,

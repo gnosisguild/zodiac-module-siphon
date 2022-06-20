@@ -1,17 +1,18 @@
-import "@nomiclabs/hardhat-ethers";
 import { BigNumber } from "ethers";
 import hre from "hardhat";
+
+const wad = BigNumber.from(10).pow(BigNumber.from(18));
+const ray = BigNumber.from(10).pow(BigNumber.from(27));
+
 const simulatePayment = async (): Promise<void> => {
-  // send some DAI to the safe
+  // steal some Dai from a whale and send it to our safe.
   const { getNamedAccounts } = hre;
-  const { daiWhale } = await getNamedAccounts();
+  const { daiWhale, gnosisDAO } = await getNamedAccounts();
   await hre.network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [daiWhale],
   });
-  const signer = await ethers.getSigner(daiWhale);
-  console.log("Signer: ", signer.address);
-
+  const whale = await hre.ethers.provider.getSigner(daiWhale);
   const dai = await hre.ethers.getContractAt(
     "TestToken",
     "0x6b175474e89094c44da98b954eedeac495271d0f"
@@ -20,19 +21,10 @@ const simulatePayment = async (): Promise<void> => {
     "TestAvatar",
     "0x849d52316331967b6ff1198e5e32a0eb168d039d"
   );
-  let whaleBalance = await dai.balanceOf(daiWhale);
-  console.log("whale Balance: ", whaleBalance.toString());
-  let safeBalance = await dai.balanceOf(safe.address);
-  console.log("Safe Balance: ", safeBalance.toString());
-  console.log("transferring to safe...");
-  await dai.connect(signer).transfer(safe.address, 100);
-  whaleBalance = await dai.balanceOf(daiWhale);
-  console.log("whale Balance: ", whaleBalance.toString());
-  safeBalance = await dai.balanceOf(safe.address);
-  console.log("Safe Balance: ", safeBalance.toString());
+  const whaleBalance = await dai.balanceOf(daiWhale);
+  await dai.connect(whale).transfer(safe.address, whaleBalance);
 
-  const wad = BigNumber.from(10).pow(BigNumber.from(18));
-  const ray = BigNumber.from(10).pow(BigNumber.from(27));
+  // instantiate all of the Maker jazz
   const cdpManager = await hre.ethers.getContractAt(
     "ICDPManager",
     "0x5ef30b9986345249bc32d8928B7ee64DE9435E39"
@@ -51,6 +43,60 @@ const simulatePayment = async (): Promise<void> => {
   const [pip, mat] = await spotter.ilks(ilk); // ray
   const debt = art.mul(rate).div(ray); // wad
   const ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
+
+  console.log("Vault ", urn);
+  console.log("-----------");
+  console.log("current debt: ", debt.toString());
+  console.log("current ratio: ", ratio.toString());
+  console.log("\n");
+
+  // deploy adapter
+  const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
+  const adapter = await Adapter.deploy(
+    dai.address, // assetDebt
+    cdpManager.address, // cdpManager
+    "0x9759A6Ac90977b93B58547b4A71c78317f391A28", // daiJoin
+    "0xD758500ddEc05172aaA035911387C8E0e789CF6a", // dsProxy
+    "0x82ecd135dce65fbc6dbdd0e4237e0af93ffd5038", // dsProxyActions
+    spotter.address, // spotter
+    3000000000000000000000000000n, // ratio target
+    2994000000000000000000000000n, // ratio trigger
+    urn // vault
+  );
+
+  const [to, value, data] = await adapter.paymentInstructions(debt);
+
+  console.log(
+    "Payment Instructions\n--------------------",
+    "to: ",
+    to,
+    "\nvalue: ",
+    value.toString(),
+    "\nfrom: ",
+    data,
+    "\n"
+  );
+
+  // impersonate the GnosisDAO
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [gnosisDAO],
+  });
+  const dao = await hre.ethers.provider.getSigner(gnosisDAO);
+
+  console.log(
+    "safe balance before: ",
+    (await dai.balanceOf(safe.address)).toString()
+  );
+
+  await safe
+    .connect(dao)
+    .execTransactionFromModule(to, value.toString(), data, 0);
+
+  console.log(
+    "safe balance after: ",
+    (await dai.balanceOf(safe.address)).toString()
+  );
 
   return;
 };
