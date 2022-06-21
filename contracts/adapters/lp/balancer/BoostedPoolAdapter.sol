@@ -11,12 +11,11 @@ import "../../../ILiquidityPosition.sol";
 
 import "../../../helpers/balancer/BoostedPool.sol";
 
-contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
+/*FactoryFriendly*/
+contract BoostedPoolAdapter is ILiquidityPosition  {
     using FixedPoint for uint256;
 
     error NotEnoughLitquidity();
-
-    address public multisend;
 
     address public avatar;
     address public vault;
@@ -28,36 +27,24 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
     uint256 public slippage;
 
     constructor(
-        address _owner,
         address _avatar,
         address _pool,
         address _gauge,
         address _tokenOut
     ) {
-        bytes memory initParams = abi.encode(
-            _owner,
-            _avatar,
-            _pool,
-            _gauge,
-            _tokenOut
-        );
+        bytes memory initParams = abi.encode(_avatar, _pool, _gauge, _tokenOut);
         setUp(initParams);
     }
 
-    function setUp(bytes memory initParams) public override {
+    function setUp(bytes memory initParams) public {
         (
-            address _owner,
             address _avatar,
             address _pool,
             address _gauge,
             address _tokenOut
-        ) = abi.decode(
-                initParams,
-                (address, address, address, address, address)
-            );
-        __Ownable_init();
+        ) = abi.decode(initParams, (address, address, address, address));
+       // __Ownable_init();
 
-        multisend = 0x8D29bE29923b68abfDD21e541b9374737B49cdAD;
         avatar = _avatar;
         vault = IPool(_pool).getVault();
         boostedPool = _pool;
@@ -69,8 +56,6 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         parityTolerance = 2e15;
         // 50 basis points
         slippage = 5e15;
-
-        transferOwnership(_owner);
     }
 
     function asset() external view override returns (address) {
@@ -290,15 +275,13 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return (price1, price2);
     }
 
-    function setMultisend(address _multisend) external onlyOwner {
-        multisend = _multisend;
-    }
 
-    function setParityTolerane(uint256 _parityTolerance) external onlyOwner {
+
+    function setParityTolerane(uint256 _parityTolerance) external  {
         parityTolerance = _parityTolerance;
     }
 
-    function setSlippage(uint256 _slippage) external onlyOwner {
+    function setSlippage(uint256 _slippage) external  {
         slippage = _slippage;
     }
 }
