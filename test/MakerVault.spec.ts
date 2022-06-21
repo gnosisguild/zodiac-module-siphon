@@ -3,6 +3,7 @@ import { BigNumber } from "ethers";
 import hre, { deployments, waffle } from "hardhat";
 
 const AddressZero = "0x0000000000000000000000000000000000000000";
+const ray = BigNumber.from(10).pow(BigNumber.from(27));
 
 describe("DP: Maker", async () => {
   const baseSetup = deployments.createFixture(async () => {
@@ -34,16 +35,15 @@ describe("DP: Maker", async () => {
       dsProxy.address, // dsProxy
       dsProxyActions.address, // dsProxyActions
       spotter.address, // spotter
-      3000000000000000000000000000n, // ratio target
-      2994000000000000000000000000n, // ratio trigger
+      4586919454964052515806212538n, // ratio target
+      4211626045012448219058431512n, // ratio trigger
       urn // vault
     );
-
-    await adapter.setAssetDebt(AddressZero);
 
     return {
       adapter,
       cdpManager,
+      dai,
       dsProxy,
       spotter,
       urn,
@@ -54,27 +54,43 @@ describe("DP: Maker", async () => {
   it("Returns Correct Ratio", async () => {
     const { adapter } = await baseSetup();
     const ratio = await adapter.ratio();
-    const expectedRatio = BigNumber.from(3235057286664591397522280128n);
+    const expectedRatio = BigNumber.from(4169926777240047741642011399n);
     expect(ratio).to.equal(expectedRatio);
   });
 
   it("Returns Correct Delta", async () => {
     const { adapter } = await baseSetup();
     const delta = await adapter.delta();
-    const expectedDelta = BigNumber.from(850381492464913306532836n);
-    console.log(delta.toString());
+    const expectedDelta = BigNumber.from(2479023057692998402742223n);
     expect(delta).to.equal(expectedDelta);
   });
 
   it("Correctly encodes payment instructions", async () => {
-    const { adapter, dsProxy } = await baseSetup();
-    const instructions = await adapter.paymentInstructions(
-      850381492464913306532836n
+    const { adapter, dsProxy, dai } = await baseSetup();
+    const [allow, transfer] = await adapter.paymentInstructions(
+      2479023057692998402742223n
     );
-    console.log(dsProxy.address);
-    console.log(instructions);
-    const expectedData =
-      "0x1cff79cd0000000000000000000000008a791620dd6260079bf849dc5567adc3f2fdc318000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000844b666199000000000000000000000000cf7ed3acca5a467e9e704c703e8d87f634fb0fc90000000000000000000000000165878a594ca255338adfa4d48449f69242eb8f000000000000000000000000000000000000000000000000000000000000007b00000000000000000000000000000000000000000000b41345e87a980d0ebbe400000000000000000000000000000000000000000000000000000000";
-    expect(instructions.data).to.equal(expectedData);
+    console.log(allow, "\n", transfer);
+
+    const expectedAllow = {
+      to: dai.address,
+      value: 0,
+      data: "0x095ea7b3000000000000000000000000959922be3caee4b8cd9a407cc3ac1c251c2007b1000000000000000000000000000000000000000000020cf41bf720b4cd2e97cf",
+      operation: 0,
+    };
+    const expectedTransfer = {
+      to: dsProxy.address,
+      value: 0,
+      data: "0x1cff79cd0000000000000000000000009a9f2ccfde556a7e9ff0848998aa4a0cfd8863ae000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000844b666199000000000000000000000000b7f8bc63bbcad18155201308c8f3540b07f84f5e0000000000000000000000009a676e781a523b5d0c0e43731313a708cb607508000000000000000000000000000000000000000000000000000000000000007b000000000000000000000000000000000000000000020cf41bf720b4cd2e97cf00000000000000000000000000000000000000000000000000000000",
+      operation: 0,
+    };
+    expect(allow[0]).to.equal(expectedAllow.to);
+    expect(allow[1]).to.equal(expectedAllow.value);
+    expect(allow[2]).to.equal(expectedAllow.data);
+    expect(allow[3]).to.equal(expectedAllow.operation);
+    expect(transfer[2]).to.equal(expectedTransfer.data);
+    expect(transfer[1]).to.equal(expectedTransfer.value);
+    expect(transfer[2]).to.equal(expectedTransfer.data);
+    expect(transfer[3]).to.equal(expectedTransfer.operation);
   });
 });
