@@ -12,12 +12,12 @@ import "../../../ILiquidityPosition.sol";
 import "../../../helpers/balancer/BoostedPool.sol";
 
 /*FactoryFriendly*/
-contract BoostedPoolAdapter is ILiquidityPosition  {
+contract BoostedPoolAdapter is ILiquidityPosition {
     using FixedPoint for uint256;
 
     error NotEnoughLitquidity();
 
-    address public avatar;
+    address public investor;
     address public vault;
     address public boostedPool;
     address public gauge;
@@ -27,25 +27,30 @@ contract BoostedPoolAdapter is ILiquidityPosition  {
     uint256 public slippage;
 
     constructor(
-        address _avatar,
+        address _investor,
         address _pool,
         address _gauge,
         address _tokenOut
     ) {
-        bytes memory initParams = abi.encode(_avatar, _pool, _gauge, _tokenOut);
+        bytes memory initParams = abi.encode(
+            _investor,
+            _pool,
+            _gauge,
+            _tokenOut
+        );
         setUp(initParams);
     }
 
     function setUp(bytes memory initParams) public {
         (
-            address _avatar,
+            address _investor,
             address _pool,
             address _gauge,
             address _tokenOut
         ) = abi.decode(initParams, (address, address, address, address));
-       // __Ownable_init();
+        // __Ownable_init();
 
-        avatar = _avatar;
+        investor = _investor;
         vault = IPool(_pool).getVault();
         boostedPool = _pool;
         gauge = _gauge;
@@ -62,11 +67,15 @@ contract BoostedPoolAdapter is ILiquidityPosition  {
         return tokenOut;
     }
 
+    function assetBalance() external view override returns (uint256) {
+        return IERC20(tokenOut).balanceOf(investor);
+    }
+
     function balance() external view override returns (uint256) {
         return balanceEffective();
     }
 
-    function isWithdrawalAvailable() external view override returns (bool) {
+    function isOpenForWithdrawals() external view override returns (bool) {
         // we should make sure the pool has at least 1M nomimal value?
         return isInParity();
     }
@@ -161,8 +170,8 @@ contract BoostedPoolAdapter is ILiquidityPosition  {
         view
         returns (uint256 unstakedBalance, uint256 stakedBalance)
     {
-        unstakedBalance = IERC20(boostedPool).balanceOf(avatar);
-        stakedBalance = IERC20(gauge).balanceOf(avatar);
+        unstakedBalance = IERC20(boostedPool).balanceOf(investor);
+        stakedBalance = IERC20(gauge).balanceOf(investor);
     }
 
     function encodeUnstake(uint256 amount)
@@ -230,9 +239,9 @@ contract BoostedPoolAdapter is ILiquidityPosition  {
                     swapSteps,
                     assets,
                     IVault.FundManagement({
-                        sender: avatar,
+                        sender: investor,
                         fromInternalBalance: false,
-                        recipient: avatar,
+                        recipient: investor,
                         toInternalBalance: false
                     }),
                     limits,
@@ -275,13 +284,11 @@ contract BoostedPoolAdapter is ILiquidityPosition  {
         return (price1, price2);
     }
 
-
-
-    function setParityTolerane(uint256 _parityTolerance) external  {
+    function setParityTolerane(uint256 _parityTolerance) external {
         parityTolerance = _parityTolerance;
     }
 
-    function setSlippage(uint256 _slippage) external  {
+    function setSlippage(uint256 _slippage) external {
         slippage = _slippage;
     }
 }

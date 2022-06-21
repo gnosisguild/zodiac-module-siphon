@@ -6,10 +6,12 @@ import "./Transaction.sol";
 interface ILiquidityPosition {
     function asset() external view returns (address);
 
+    function assetBalance() external view returns (uint256);
+
     function balance() external view returns (uint256);
 
-    // should we call it simply: isAvailable?
-    function isWithdrawalAvailable() external view returns (bool);
+    // still not sure about this name
+    function isOpenForWithdrawals() external view returns (bool);
 
     function withdrawalInstructions(uint256 amount)
         external
