@@ -1,7 +1,6 @@
 import { BigNumber } from "ethers";
 import hre from "hardhat";
 
-const wad = BigNumber.from(10).pow(BigNumber.from(18));
 const ray = BigNumber.from(10).pow(BigNumber.from(27));
 
 const simulatePayment = async (): Promise<void> => {
@@ -25,7 +24,6 @@ const simulatePayment = async (): Promise<void> => {
   await dai.connect(whale).transfer(safe.address, whaleBalance);
   const tx = {
     to: gnosisDAO,
-    // Convert currency unit from ether to wei
     value: hre.ethers.utils.parseEther("10"),
   };
   await whale.sendTransaction(tx);
@@ -45,15 +43,10 @@ const simulatePayment = async (): Promise<void> => {
   const urnHandler = await cdpManager.urns(urn);
   let ilk = await cdpManager.ilks(urn);
   let [ink, art] = await vat.urns(ilk, urnHandler); // wad
-  let [, rate, spot, , dust] = await vat.ilks(ilk); // ray
-  let [pip, mat] = await spotter.ilks(ilk); // ray
-  let debt = art.mul(rate).div(ray); // wad
-  let ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
-
-  console.log("Vault ", urn);
-  console.log("-----------");
-  console.log("current debt: ", debt.toString());
-  console.log("current ratio: ", ratio.toString());
+  let [, rate, spot, ,] = await vat.ilks(ilk); // ray
+  let [, mat] = await spotter.ilks(ilk); // ray
+  const debt = art.mul(rate).div(ray); // wad
+  const ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
 
   // deploy adapter
   const proxy = "0xD758500ddEc05172aaA035911387C8E0e789CF6a";
@@ -72,34 +65,18 @@ const simulatePayment = async (): Promise<void> => {
     urn // vault
   );
 
-  console.log("target ratio: ", targetRatio.toString());
-  console.log("trigger ratio: ", triggerRatio.toString());
-  console.log("\n");
-
+  // get delta and payment instructions
   const delta = await adapter.delta();
-  console.log("Delta: ", delta.toString());
-  console.log("\n");
-
   const [approve, repay] = await adapter.paymentInstructions(delta);
 
-  console.log("Payment Instructions\n--------------------");
-  console.log("approve: ", approve);
-  console.log("repay: ", repay);
-  console.log("\n");
-
-  // impersonate the GnosisDAO
+  // impersonate the GnosisDAO since it is enabled as a module on the treasury management safe
   await hre.network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [gnosisDAO],
   });
   const dao = await hre.ethers.provider.getSigner(gnosisDAO);
 
-  console.log(
-    "safe balance before: ",
-    (await dai.balanceOf(safe.address)).toString()
-  );
-
-  // repay debt
+  // use GnosisDAO as a module to execute payment instructions
   await safe
     .connect(dao)
     .execTransactionFromModule(
@@ -108,7 +85,6 @@ const simulatePayment = async (): Promise<void> => {
       approve.data,
       approve.operation
     );
-
   await safe
     .connect(dao)
     .execTransactionFromModule(
@@ -118,25 +94,37 @@ const simulatePayment = async (): Promise<void> => {
       repay.operation
     );
 
-  console.log(
-    "safe balance after: ",
-    (await dai.balanceOf(safe.address)).toString()
-  );
-  console.log("\n");
-
+  // get updated Maker jazz
   ilk = await cdpManager.ilks(urn);
   [ink, art] = await vat.urns(ilk, urnHandler); // wad
-  [, rate, spot, , dust] = await vat.ilks(ilk); // ray
-  [pip, mat] = await spotter.ilks(ilk); // ray
-  debt = art.mul(rate).div(ray); // wad
-  ratio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
+  [, rate, spot, ,] = await vat.ilks(ilk); // ray
+  [, mat] = await spotter.ilks(ilk); // ray
+  const newDebt = art.mul(rate).div(ray); // wad
+  const newRatio = ink.mul(spot).div(ray).mul(mat).div(art.mul(rate).div(ray)); // ray
 
+  // log all the things
   console.log("Vault ", urn);
   console.log("-----------");
-  console.log("current debt: ", debt.toString());
   console.log("current ratio: ", ratio.toString());
-  console.log("target ratio: ", targetRatio.toString());
+  console.log("target ratio : ", targetRatio.toString());
   console.log("trigger ratio: ", triggerRatio.toString());
+  console.log("current debt : ", debt.toString());
+  console.log("debt delta   : ", delta.toString());
+  console.log("new debt     : ", newDebt.toString());
+  console.log("new ratio    : ", newRatio.toString());
+  console.log("\n");
+
+  console.log("Payment Instructions\n--------------------");
+  console.log("approve.to: ", approve.to);
+  console.log("approve.value: ", approve.value.toString());
+  console.log("approve.data: ", approve.data);
+  console.log("approve.operation: ", approve.operation);
+  console.log("--------------------");
+  console.log("repay.to: ", repay.to);
+  console.log("repay.value: ", repay.value.toString());
+  console.log("repay.data: ", repay.data);
+  console.log("repay.operation: ", repay.operation);
+  console.log("--------------------");
   console.log("\n");
 
   return;

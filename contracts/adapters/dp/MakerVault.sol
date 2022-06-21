@@ -199,6 +199,8 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
         // or
         // Collateralization Ratio = collateral in vault * spot price * liquidation ratio / (dait debt)
+        // or
+        // r = (c * s * l) / d
         uint256 art;
         uint256 ink;
         uint256 mat;
@@ -216,14 +218,19 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     // @return Amount of Dai necessary that should be repaid to bring vault to target ratio.
     function delta() external view override returns (uint256 amount) {
         uint256 art;
+        uint256 ink;
+        uint256 mat;
         uint256 rate;
+        uint256 spot;
         uint256 debt;
-        (, art) = IVat(vat).urns(ilk, urnHandler);
-        (, rate, , , ) = IVat(vat).ilks(ilk);
-        debt = art * rate;
-        amount = debt / (ratioTarget - ratio());
-        // known: debt, targetRatio, ratio
-        // uknown: amount
+        (ink, art) = IVat(vat).urns(ilk, urnHandler);
+        (, rate, spot, , ) = IVat(vat).ilks(ilk);
+        (, mat) = ISpotter(spotter).ilks(ilk);
+        debt = (art * rate) / RAY;
+        // Equation to get debt at a given ratio:
+        // d = (c * s * l) / r
+        uint256 debtTarget = (((ink * spot) / RAY) * mat) / ratioTarget;
+        amount = debt - debtTarget;
     }
 
     // @dev Returns the call data to repay debt on the vault.
