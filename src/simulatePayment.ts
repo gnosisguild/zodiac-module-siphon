@@ -1,9 +1,25 @@
+import dotenv from "dotenv";
 import { BigNumber } from "ethers";
 import hre from "hardhat";
 
 const ray = BigNumber.from(10).pow(BigNumber.from(27));
 
 const simulatePayment = async (): Promise<void> => {
+  // Load environment variables.
+  dotenv.config();
+  const { ALCHEMY_KEY } = process.env;
+  // fork mainnet
+  await hre.network.provider.request({
+    method: "hardhat_reset",
+    params: [
+      {
+        forking: {
+          jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+        },
+      },
+    ],
+  });
+
   // steal some ETH and Dai from a whale and send it to our safes.
   const { getNamedAccounts } = hre;
   const { daiWhale, gnosisDAO } = await getNamedAccounts();

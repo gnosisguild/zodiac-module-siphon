@@ -5,8 +5,6 @@ import hre, { deployments, waffle } from "hardhat";
 const AddressZero = "0x0000000000000000000000000000000000000000";
 
 describe("DP: Maker", async () => {
-  const [user] = waffle.provider.getWallets();
-
   const baseSetup = deployments.createFixture(async () => {
     await deployments.fixture();
     const urn = 123;
@@ -64,6 +62,7 @@ describe("DP: Maker", async () => {
     const { adapter } = await baseSetup();
     const delta = await adapter.delta();
     const expectedDelta = BigNumber.from(850381492464913306532836n);
+    console.log(delta.toString());
     expect(delta).to.equal(expectedDelta);
   });
 
