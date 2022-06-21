@@ -70,8 +70,6 @@ describe("DP: Maker", async () => {
     const [allow, transfer] = await adapter.paymentInstructions(
       2479023057692998402742223n
     );
-    console.log(allow, "\n", transfer);
-
     const expectedAllow = {
       to: dai.address,
       value: 0,
