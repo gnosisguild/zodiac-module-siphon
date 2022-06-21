@@ -15,8 +15,6 @@ import "../../../helpers/balancer/BoostedPool.sol";
 contract BoostedPoolAdapter is ILiquidityPosition {
     using FixedPoint for uint256;
 
-    error NotEnoughLitquidity();
-
     address public investor;
     address public vault;
     address public boostedPool;
@@ -80,40 +78,32 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         return isInParity();
     }
 
-    function withdrawalInstructions(uint256 amountOut)
+    function withdrawalInstructions(uint256 requestedAmountOut)
         external
         view
         override
         returns (Transaction[] memory)
     {
-        uint256 amountIn = BoostedPoolHelper.calcBptInGivenStableOut(
-            boostedPool,
-            tokenOut,
-            amountOut
-        );
-        uint256 maxAmountIn = amountIn.add(amountIn.mulDown(slippage));
-        (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
+        (uint256 unstakedBalance, ) = bptBalances();
 
-        // The balance function is getting the effectively available balance
-        // minus splippage, so if Siphon requests after query balance
-        // the following invariant should hold
-        require(
-            maxAmountIn < unstakedBalance + stakedBalance,
-            "Not enough BPT"
-        );
+        (
+            IVault.SwapKind kind,
+            uint256 amountIn,
+            uint256 amountOut
+        ) = inferExitConditions(requestedAmountOut);
 
-        uint256 amountToUnstake = maxAmountIn > unstakedBalance
-            ? Math.min(stakedBalance, maxAmountIn - unstakedBalance)
+        uint256 amountToUnstake = amountIn > unstakedBalance
+            ? amountIn - unstakedBalance
             : 0;
 
         Transaction[] memory result;
         if (amountToUnstake > 0) {
             result = new Transaction[](2);
             result[0] = encodeUnstake(amountToUnstake);
-            result[1] = encodeExit(maxAmountIn, amountOut);
+            result[1] = encodeExit(kind, amountIn, amountOut);
         } else {
             result = new Transaction[](1);
-            result[0] = encodeExit(maxAmountIn, amountOut);
+            result[0] = encodeExit(kind, amountIn, amountOut);
         }
         return result;
     }
@@ -189,44 +179,60 @@ contract BoostedPoolAdapter is ILiquidityPosition {
             });
     }
 
-    function encodeExit(uint256 maxAmountIn, uint256 amountOut)
-        internal
-        view
-        returns (Transaction memory)
-    {
+    function encodeExit(
+        IVault.SwapKind kind,
+        uint256 amountIn,
+        uint256 amountOut
+    ) internal view returns (Transaction memory) {
         address linearPool = BoostedPoolHelper.findLinearPool(
             boostedPool,
             tokenOut
         );
 
-        // Note we need to encode a dynamic type array
-        // hence the ugly instantiation style
         address[] memory assets = new address[](3);
         assets[0] = boostedPool;
         assets[1] = linearPool;
         assets[2] = tokenOut;
 
         int256[] memory limits = new int256[](3);
-        limits[0] = int256(maxAmountIn);
+        limits[0] = int256(amountIn);
         limits[1] = 0;
         limits[2] = -1 * int256(amountOut);
 
         IVault.BatchSwapStep[] memory swapSteps = new IVault.BatchSwapStep[](2);
-        swapSteps[0] = IVault.BatchSwapStep({
-            poolId: IPool(linearPool).getPoolId(),
-            assetInIndex: 1,
-            assetOutIndex: 2,
-            amount: amountOut,
-            userData: hex""
-        });
+        if (kind == IVault.SwapKind.GIVEN_OUT) {
+            swapSteps[0] = IVault.BatchSwapStep({
+                poolId: IPool(linearPool).getPoolId(),
+                assetInIndex: 1,
+                assetOutIndex: 2,
+                amount: amountOut,
+                userData: hex""
+            });
 
-        swapSteps[1] = IVault.BatchSwapStep({
-            poolId: IPool(boostedPool).getPoolId(),
-            assetInIndex: 0,
-            assetOutIndex: 1,
-            amount: 0,
-            userData: hex""
-        });
+            swapSteps[1] = IVault.BatchSwapStep({
+                poolId: IPool(boostedPool).getPoolId(),
+                assetInIndex: 0,
+                assetOutIndex: 1,
+                amount: 0,
+                userData: hex""
+            });
+        } else {
+            swapSteps[0] = IVault.BatchSwapStep({
+                poolId: IPool(boostedPool).getPoolId(),
+                assetInIndex: 0,
+                assetOutIndex: 1,
+                amount: amountIn,
+                userData: hex""
+            });
+
+            swapSteps[1] = IVault.BatchSwapStep({
+                poolId: IPool(linearPool).getPoolId(),
+                assetInIndex: 1,
+                assetOutIndex: 2,
+                amount: 0,
+                userData: hex""
+            });
+        }
 
         // the actual return values
         return
@@ -235,7 +241,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
                 value: 0,
                 data: abi.encodeWithSelector(
                     0x945bcec9,
-                    uint8(IVault.SwapKind.GIVEN_OUT),
+                    uint8(kind),
                     swapSteps,
                     assets,
                     IVault.FundManagement({
@@ -249,6 +255,60 @@ contract BoostedPoolAdapter is ILiquidityPosition {
                 ),
                 operation: Enum.Operation.Call
             });
+    }
+
+    function inferExitConditions(uint256 requestedAmountOut)
+        internal
+        view
+        returns (
+            IVault.SwapKind kind,
+            uint256 amountIn,
+            uint256 amountOut
+        )
+    {
+        // GIVEN_IN
+        // If we are performing a GIVEN_IN batchSwap and wanted to apply a 1% slippage tolerance,
+        // we would multiple our negative assetDeltas by 0.99. We do not need to modify
+        // our positive amounts because we know the exact amount we are putting in.
+        // GIVEN_OUT
+        // If we are performing a GIVEN_OUT batchSwap and wanted to apply a 1% slippage tolerance,
+        // we would multiple our positive assetDeltas by 1.01. We do not need to modify
+        // our negative amounts because we know the exact amount we are getting out.
+
+        bool isTooCloseToCall = requestedAmountOut >
+            balanceEffective().mulDown(FixedPoint.ONE - (slippage + slippage));
+
+        (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
+
+        // We can't know in advance how much we'll be getting out
+        // If the effective balance estimate is close to the requested amount,
+        // we just exit the entire position. This also avoids leaving
+        // crumbs in the liquidity position
+        if (isTooCloseToCall) {
+            kind = IVault.SwapKind.GIVEN_IN;
+            amountIn = unstakedBPT + stakedBPT;
+            amountOut = FixedPoint.mulDown(
+                BoostedPoolHelper.calcStableOutGivenBptIn(
+                    boostedPool,
+                    amountIn,
+                    tokenOut
+                ),
+                FixedPoint.ONE - slippage
+            );
+        } else {
+            kind = IVault.SwapKind.GIVEN_OUT;
+            amountIn = FixedPoint.mulDown(
+                BoostedPoolHelper.calcBptInGivenStableOut(
+                    boostedPool,
+                    tokenOut,
+                    requestedAmountOut
+                ),
+                FixedPoint.ONE + slippage
+            );
+            amountOut = requestedAmountOut;
+
+            require(amountIn <= unstakedBPT + stakedBPT, "Invariant");
+        }
     }
 
     function _debugPriceDeltas() public view returns (uint256, uint256) {
