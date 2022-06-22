@@ -71,7 +71,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         uint256 vault
     );
 
-    address public override assetDebt;
+    address public override asset;
     address public cdpManager;
     address public daiJoin;
     address public dsProxy;
@@ -87,7 +87,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     uint256 public vault;
 
     constructor(
-        address _assetDebt,
+        address _asset,
         address _cdpManager,
         address _daiJoin,
         address _dsProxy,
@@ -98,7 +98,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         uint256 _vault
     ) {
         bytes memory initParams = abi.encode(
-            _assetDebt,
+            _asset,
             _cdpManager,
             _daiJoin,
             _dsProxy,
@@ -113,7 +113,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     function setUp(bytes memory initParams) public override initializer {
         (
-            address _assetDebt,
+            address _asset,
             address _cdpManager,
             address _daiJoin,
             address _dsProxy,
@@ -138,7 +138,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             );
         __Ownable_init();
 
-        assetDebt = _assetDebt;
+        asset = _asset;
         cdpManager = _cdpManager;
         daiJoin = _daiJoin;
         dsProxy = _dsProxy;
@@ -235,7 +235,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         Transaction[] memory result = new Transaction[](2);
         // TODO: add a call to dai.approve(dsProxy, amount)
         result[0] = Transaction({
-            to: assetDebt,
+            to: asset,
             value: 0,
             data: abi.encodeWithSignature(
                 "approve(address,uint256)",

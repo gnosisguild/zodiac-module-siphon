@@ -4,7 +4,7 @@ pragma solidity ^0.8.6;
 import "./Transaction.sol";
 
 interface IDebtPosition {
-    function assetDebt() external view returns (address);
+    function asset() external view returns (address);
 
     function setRatioTrigger(uint256 ratio) external;
 

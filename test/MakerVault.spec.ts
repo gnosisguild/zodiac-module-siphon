@@ -32,7 +32,7 @@ describe("DP: Maker", async () => {
     const dsProxyActions = await DsProxyActions.deploy();
     const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
     const adapter = await Adapter.deploy(
-      dai.address, // assetDebt
+      dai.address, // asset
       cdpManager.address, // cdpManager
       daiJoin.address, // daiJoin
       dsProxy.address, // dsProxy
@@ -67,7 +67,7 @@ describe("DP: Maker", async () => {
         spotter,
         urn,
       } = await baseSetup();
-      expect(await adapter.assetDebt()).to.equal(dai.address);
+      expect(await adapter.asset()).to.equal(dai.address);
       expect(await adapter.cdpManager()).to.equal(cdpManager.address);
       expect(await adapter.daiJoin()).to.equal(daiJoin.address);
       expect(await adapter.dsProxy()).to.equal(dsProxy.address);

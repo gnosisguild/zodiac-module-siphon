@@ -71,7 +71,7 @@ const simulatePayment = async (): Promise<void> => {
   const targetRatio = ratio.add(ratio.mul(10).div(100)); // 10% higher than current
   const triggerRatio = ratio.add(ratio.div(100)); // 1% higher than current
   const adapter = await Adapter.deploy(
-    dai.address, // assetDebt
+    dai.address, // asset
     cdpManager.address, // cdpManager
     "0x9759A6Ac90977b93B58547b4A71c78317f391A28", // daiJoin
     proxy, // dsProxy

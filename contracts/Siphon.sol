@@ -104,7 +104,7 @@ contract Siphon is Module, MultisendEncoder {
             revert TargetRatioNotSet();
         }
 
-        if (dp.assetDebt() != lp.asset()) {
+        if (dp.asset() != lp.asset()) {
             revert UnsuitableLiquidityForPayment();
         }
 
