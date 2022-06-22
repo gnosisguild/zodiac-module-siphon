@@ -56,10 +56,8 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
         tokenOut = _tokenOut;
 
-        // 20 basis points
-        parityTolerance = 2e15;
-        // 50 basis points
-        slippage = 5e15;
+        parityTolerance = basisPoints(20);
+        slippage = basisPoints(50);
         _transferOwnership(_owner);
     }
 
@@ -148,9 +146,11 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function balanceEffective(uint256 bptAmount) public view returns (uint256) {
         return
-            BoostedPoolHelper
-                .calcStableOutGivenBptIn(boostedPool, bptAmount, tokenOut)
-                .mulDown((FixedPoint.ONE - slippage));
+            BoostedPoolHelper.calcStableOutGivenBptIn(
+                boostedPool,
+                bptAmount,
+                tokenOut
+            );
     }
 
     function bptBalances()
@@ -345,7 +345,11 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         parityTolerance = _parityTolerance;
     }
 
-    function setSlippage(uint256 _slippage) external onlyOwner{
+    function setSlippage(uint256 _slippage) external onlyOwner {
         slippage = _slippage;
+    }
+
+    function basisPoints(uint256 bips) public pure returns (uint256) {
+        return bips * 1e14;
     }
 }

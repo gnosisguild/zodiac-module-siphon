@@ -10,7 +10,6 @@ async function setupAvatarAndFundWithBPT() {
   const Avatar = await hre.ethers.getContractFactory("TestAvatar");
   const avatar = await Avatar.deploy();
 
-  const bpt = await hre.ethers.getContractAt("TestToken", POOL_ADDRESS);
   const gauge = await hre.ethers.getContractAt("TestToken", GAUGE_ADDRESS);
 
   // whale has 2030486787543655114968077 staked bpt
@@ -110,25 +109,21 @@ describe.only("LP: BoostedPoolAdapter", async () => {
   it("Withdrawing more than available balance yields full exit - outGivenIn", async () => {
     const { avatar, adapter, DAI, POOL, GAUGE } = await baseSetup();
 
+    const avatarBptBalance = BigNumber.from("1000000000000000000000000");
+    const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
+    const adapterLiquidity = BigNumber.from("2023362534820327249714740");
+
     // Avatar has zero DAI
-    await expect(await DAI.balanceOf(avatar.address)).to.equal(
-      hre.ethers.utils.parseEther("0")
-    );
+    expect(await DAI.balanceOf(avatar.address)).to.equal(0);
 
-    await expect(await POOL.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
-    );
+    expect(await POOL.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
-    await expect(await GAUGE.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
-    );
+    expect(await GAUGE.balanceOf(avatar.address)).to.equal(avatarGaugeBalance);
 
-    const preExitBalance: BigNumber = await adapter.balance();
-    await expect(preExitBalance).to.equal(
-      BigNumber.from("2013245722146225613466166")
-    );
+    expect(await adapter.balance()).to.equal(adapterLiquidity);
 
-    const requestedAmountOut = preExitBalance.mul(BigNumber.from("2"));
+    // requesting 10x more than available
+    const requestedAmountOut = adapterLiquidity.mul(10);
 
     const instructions = await adapter.withdrawalInstructions(
       requestedAmountOut
@@ -148,10 +143,6 @@ describe.only("LP: BoostedPoolAdapter", async () => {
       instructions[1].data
     );
 
-    const postExitBalance: BigNumber = await DAI.balanceOf(avatar.address);
-
-    expect(postExitBalance.gt(0)).to.be.true;
-
     // Expect BPT and StakedBPT to be drained
     await expect(await POOL.balanceOf(avatar.address)).to.equal(
       BigNumber.from("0")
@@ -160,31 +151,48 @@ describe.only("LP: BoostedPoolAdapter", async () => {
     await expect(await GAUGE.balanceOf(avatar.address)).to.equal(
       BigNumber.from("0")
     );
+
+    const slippage = await adapter.slippage();
+    const outLiquidityUpper = adapterLiquidity.add(
+      getSlippageSlice(adapterLiquidity, slippage)
+    );
+    const outLiquidityLower = adapterLiquidity.sub(
+      getSlippageSlice(adapterLiquidity, slippage)
+    );
+
+    const actualAmountOut = await DAI.balanceOf(avatar.address);
+
+    // expect the amountOut to be around what was forecasted
+    expect(
+      actualAmountOut.gt(outLiquidityLower) &&
+        actualAmountOut.lt(outLiquidityUpper)
+    ).to.be.true;
   });
 
   it("Withdrawing close to available balances yields full exit - outGivenIn", async () => {
     const { avatar, adapter, DAI, POOL, GAUGE } = await baseSetup();
 
+    const avatarBptBalance = BigNumber.from("1000000000000000000000000");
+    const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
+    const adapterLiquidity = BigNumber.from("2023362534820327249714740");
+
     // Avatar has zero DAI
-    await expect(await DAI.balanceOf(avatar.address)).to.equal(
-      hre.ethers.utils.parseEther("0")
-    );
+    await expect(await DAI.balanceOf(avatar.address)).to.equal(0);
 
     await expect(await POOL.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
+      avatarBptBalance
     );
-
     await expect(await GAUGE.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
+      avatarGaugeBalance
     );
+    await expect(await adapter.balance()).to.equal(adapterLiquidity);
 
-    const preExitBalance: BigNumber = await adapter.balance();
-    await expect(preExitBalance).to.equal(
-      BigNumber.from("2013245722146225613466166")
+    const slippage = await adapter.slippage();
+
+    // withdrawing slightly less than available, should yield full exit
+    const requestedAmountOut = adapterLiquidity.sub(
+      getSlippageSlice(adapterLiquidity, slippage)
     );
-
-    // slightly less than available
-    const requestedAmountOut = "2013000000000000000000000";
 
     const instructions = await adapter.withdrawalInstructions(
       requestedAmountOut
@@ -204,44 +212,45 @@ describe.only("LP: BoostedPoolAdapter", async () => {
       instructions[1].data
     );
 
-    const postExitBalance: BigNumber = await DAI.balanceOf(avatar.address);
-
-    expect(postExitBalance.gt(0)).to.be.true;
-
     // Expect BPT and StakedBPT to be drained
-    await expect(await POOL.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("0")
+    await expect(await POOL.balanceOf(avatar.address)).to.equal(0);
+
+    await expect(await GAUGE.balanceOf(avatar.address)).to.equal(0);
+
+    // expect the amountOut to be around what was forecasted
+    const outLiquidityUpper = adapterLiquidity.add(
+      getSlippageSlice(adapterLiquidity, slippage)
+    );
+    const outLiquidityLower = adapterLiquidity.sub(
+      getSlippageSlice(adapterLiquidity, slippage)
     );
 
-    await expect(await GAUGE.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("0")
-    );
+    const actualAmountOut = await DAI.balanceOf(avatar.address);
+    expect(
+      actualAmountOut.gt(outLiquidityLower) &&
+        actualAmountOut.lt(outLiquidityUpper)
+    ).to.be.true;
   });
 
   it("Withdrawing with partial unstake and exit - inGivenOut", async () => {
-    // getting ~75% of liquidity should yield a partial withdrawal, since we start with 50/50
+    // getting ~75% of liquidity should yield a partial withdrawal, since we start with 50/50 stake and unstaked bpt
     const { avatar, adapter, DAI, POOL, GAUGE } = await baseSetup();
 
+    const avatarBptBalance = BigNumber.from("1000000000000000000000000");
+    const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
+    const adapterLiquidity = BigNumber.from("2023362534820327249714740");
+
     // Avatar has zero DAI
-    await expect(await DAI.balanceOf(avatar.address)).to.equal(
-      hre.ethers.utils.parseEther("0")
-    );
+    expect(await DAI.balanceOf(avatar.address)).to.equal(0);
 
-    await expect(await POOL.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
-    );
+    expect(await POOL.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
-    await expect(await GAUGE.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
-    );
+    expect(await GAUGE.balanceOf(avatar.address)).to.equal(avatarGaugeBalance);
 
-    const preExitBalance: BigNumber = await adapter.balance();
-    await expect(preExitBalance).to.equal(
-      BigNumber.from("2013245722146225613466166")
-    );
+    expect(await adapter.balance()).to.equal(adapterLiquidity);
 
-    // ballpark 75% of what's available
-    const requestedAmountOut = BigNumber.from("1500000000000000000000000");
+    // roughly 75% of what's available in the liquidity position
+    const requestedAmountOut = adapterLiquidity.div(100).mul(75);
 
     const instructions = await adapter.withdrawalInstructions(
       requestedAmountOut
@@ -261,60 +270,58 @@ describe.only("LP: BoostedPoolAdapter", async () => {
       instructions[1].data
     );
 
-    // We expect the avatar to have exactly the DAI required
+    // We expect the avatar to have exactly the required DAI
     await expect(await DAI.balanceOf(avatar.address)).to.equal(
       requestedAmountOut
     );
 
-    // TODO this was not working
-    // Expect BPT to be drained, but not stakedBPT
-    // await expect(await POOL.balanceOf(avatar.address)).to.equal(
-    //   BigNumber.from("0")
-    // );
-
-    // we expect round about half of the STAKED BPT to have been unstaked
+    // we expect round about half of the STAKED BPT to remain staked
     expect(
       (await GAUGE.balanceOf(avatar.address)).gt(
-        BigNumber.from("450000000000000000000000")
-      )
+        avatarGaugeBalance.div(100).mul(49)
+      ) &&
+        (await GAUGE.balanceOf(avatar.address)).lt(
+          avatarGaugeBalance.div(100).mul(51)
+        )
     ).to.be.true;
 
-    expect(
-      (await GAUGE.balanceOf(avatar.address)).lt(
-        BigNumber.from("550000000000000000000000")
-      )
-    ).to.be.true;
+    // we expect at some slippage crumbles of BPT to remain
+    const slippage = await adapter.slippage();
+    const bptAmountSwapped = BigNumber.from("1500000000000000000000000");
+    const maxBptLeftovers = getSlippageSlice(bptAmountSwapped, slippage);
+
+    await expect((await POOL.balanceOf(avatar.address)).lt(maxBptLeftovers)).to
+      .be.true;
   });
 
   it("Withdrawing without need to unstake, exit only - inGivenOut", async () => {
-    // getting ~75% of liquidity should yield a partial withdrawal, since we start with 50/50
     const { avatar, adapter, DAI, POOL, GAUGE } = await baseSetup();
 
+    const avatarBptBalance = BigNumber.from("1000000000000000000000000");
+    const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
+    const adapterLiquidity = BigNumber.from("2023362534820327249714740");
+
     // Avatar has zero DAI
-    await expect(await DAI.balanceOf(avatar.address)).to.equal(
-      hre.ethers.utils.parseEther("0")
-    );
+    await expect(await DAI.balanceOf(avatar.address)).to.equal(0);
 
     await expect(await POOL.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
+      avatarBptBalance
     );
 
     await expect(await GAUGE.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
+      avatarGaugeBalance
     );
 
-    const preExitBalance: BigNumber = await adapter.balance();
-    await expect(preExitBalance).to.equal(
-      BigNumber.from("2013245722146225613466166")
-    );
+    await expect(await adapter.balance()).to.equal(adapterLiquidity);
 
-    // ballpark 10% of what's available
-    const requestedAmountOut = BigNumber.from("200000000000000000000000");
+    // 10% of what's available
+    const requestedAmountOut = adapterLiquidity.div(100).mul(10);
 
     const instructions = await adapter.withdrawalInstructions(
       requestedAmountOut
     );
 
+    // No unstaking needed
     expect(instructions).to.have.length(1);
 
     await avatar.exec(
@@ -328,17 +335,36 @@ describe.only("LP: BoostedPoolAdapter", async () => {
       requestedAmountOut
     );
 
-    // we expect round about half of the STAKED BPT to have been unstaked
+    // we expected staked BPT to remain unchanged
     await expect(await GAUGE.balanceOf(avatar.address)).to.equal(
-      BigNumber.from("1000000000000000000000000")
+      avatarGaugeBalance
     );
 
-    // TODO assert on gauge balance
-    // // Expect BPT to be drained, but not stakedBPT
-    // await expect(await POOL.balanceOf(avatar.address)).to.equal(
-    //   BigNumber.from("0")
-    // );
+    const slippage = await adapter.slippage();
+    // approximation: 10% of balance requested, that's 20% of unstaked used
+    const bptUsed = avatarGaugeBalance.div(100).mul(20);
+    // approximation plus slippage
+    const bptUsedMore = bptUsed.add(getSlippageSlice(bptUsed, slippage));
+    // approximation less slippage
+    const bptUsedLess = bptUsed.sub(getSlippageSlice(bptUsed, slippage));
+
+    const bptUnusedUpper = avatarBptBalance.sub(bptUsedLess);
+    const bptUnusedLower = avatarBptBalance.sub(bptUsedMore);
+
+    await expect(
+      (await POOL.balanceOf(avatar.address)).gt(bptUnusedLower) &&
+        (await POOL.balanceOf(avatar.address)).lt(bptUnusedUpper)
+    ).to.be.true;
   });
 
   it("Withdrawing with limited DAI liquidity in LinearPool");
 });
+
+function countBasisPoints(bn: BigNumber): BigNumber {
+  return bn.div(BigNumber.from("100000000000000"));
+}
+
+function getSlippageSlice(amount: BigNumber, slippage: BigNumber) {
+  const bips = countBasisPoints(slippage);
+  return amount.div(10000).mul(bips);
+}
