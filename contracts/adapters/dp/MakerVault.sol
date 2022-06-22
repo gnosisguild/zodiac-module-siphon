@@ -55,8 +55,6 @@ interface IVat {
 
 // temporary: marked abstract to silence compiler
 contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
-    event SetAssetCollateral(address assetCollateral);
-    event SetAssetDebt(address assetDebt);
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
     event AdapterSetup(
@@ -170,14 +168,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         );
     }
 
-    // @dev Sets the address of debtAsset (dai)
-    // @param _assetDebt The address of debtAsset (dai)
-    // @notice Can only be called by owner.
-    function setAssetDebt(address _assetDebt) external onlyOwner {
-        assetDebt = _assetDebt;
-        emit SetAssetDebt(assetDebt);
-    }
-
     // @dev Sets the target callateralization ratio for the vault.
     // @param _ratio Target collateralization ratio for the vault.
     // @notice Can only be called by owner.
@@ -235,9 +225,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     // @dev Returns the call data to repay debt on the vault.
     // @param amount The amount of tokens to repay to the vault.
-    // @return to Address that the call should be to.
-    // @return value Native token value attached to the call.
-    // @return data Call data for the call.
+    // @return result array of transactions to be executed to repay debt.
     function paymentInstructions(uint256 amount)
         external
         view
