@@ -341,11 +341,11 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return (price1, price2);
     }
 
-    function setParityTolerane(uint256 _parityTolerance) external {
+    function setParityTolerane(uint256 _parityTolerance) external onlyOwner {
         parityTolerance = _parityTolerance;
     }
 
-    function setSlippage(uint256 _slippage) external {
+    function setSlippage(uint256 _slippage) external onlyOwner{
         slippage = _slippage;
     }
 }
