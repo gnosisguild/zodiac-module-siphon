@@ -4,7 +4,10 @@ pragma solidity ^0.8.6;
 import "../../IDebtPosition.sol";
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 
-interface ICDPManagger {
+uint256 constant WAD = 10**18;
+uint256 constant RAY = 10**27;
+
+interface ICDPManager {
     function ilks(uint256 vault) external view returns (bytes32 ilk);
 
     function urns(uint256 vault) external view returns (address urnHandler);
@@ -50,13 +53,13 @@ interface IVat {
         );
 }
 
+// temporary: marked abstract to silence compiler
 contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
+    event SetAssetCollateral(address assetCollateral);
+    event SetAssetDebt(address assetDebt);
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
-    event AdapterSetuP(
-        address owner,
-        address assetCollateral,
-        address assetDebt,
+    event AdapterSetup(
         address cdpManager,
         address daiJoin,
         address dsProxy,
@@ -70,7 +73,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         uint256 vault
     );
 
-    address public override assetCollateral;
     address public override assetDebt;
     address public cdpManager;
     address public daiJoin;
@@ -87,8 +89,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     uint256 public vault;
 
     constructor(
-        address _owner,
-        address _assetCollateral,
         address _assetDebt,
         address _cdpManager,
         address _daiJoin,
@@ -100,8 +100,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         uint256 _vault
     ) {
         bytes memory initParams = abi.encode(
-            _owner,
-            _assetCollateral,
             _assetDebt,
             _cdpManager,
             _daiJoin,
@@ -115,10 +113,8 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         setUp(initParams);
     }
 
-    function setUp(bytes memory initParams) public override {
+    function setUp(bytes memory initParams) public override initializer {
         (
-            address _owner,
-            address _assetCollateral,
             address _assetDebt,
             address _cdpManager,
             address _daiJoin,
@@ -137,8 +133,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
                     address,
                     address,
                     address,
-                    address,
-                    address,
                     uint256,
                     uint256,
                     uint256
@@ -146,7 +140,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             );
         __Ownable_init();
 
-        assetCollateral = _assetCollateral;
         assetDebt = _assetDebt;
         cdpManager = _cdpManager;
         daiJoin = _daiJoin;
@@ -158,16 +151,11 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         ratioTrigger = _ratioTrigger;
         vault = _vault;
 
-        ilk = ICDPManagger(cdpManager).ilks(vault);
-        urnHandler = ICDPManagger(cdpManager).urns(vault);
-        vat = ICDPManagger(cdpManager).vat();
+        ilk = ICDPManager(cdpManager).ilks(vault);
+        urnHandler = ICDPManager(cdpManager).urns(vault);
+        vat = ICDPManager(cdpManager).vat();
 
-        transferOwnership(_owner);
-
-        emit AdapterSetuP(
-            owner(),
-            assetCollateral,
-            assetDebt,
+        emit AdapterSetup(
             cdpManager,
             daiJoin,
             dsProxy,
@@ -180,6 +168,14 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             ratioTrigger,
             vault
         );
+    }
+
+    // @dev Sets the address of debtAsset (dai)
+    // @param _assetDebt The address of debtAsset (dai)
+    // @notice Can only be called by owner.
+    function setAssetDebt(address _assetDebt) external onlyOwner {
+        assetDebt = _assetDebt;
+        emit SetAssetDebt(assetDebt);
     }
 
     // @dev Sets the target callateralization ratio for the vault.
@@ -198,11 +194,13 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         emit SetRatioTrigger(ratioTrigger);
     }
 
-    // @dev Returns the current collateralization ratio of the vault.
-    function ratio() external view override returns (uint256) {
+    // @dev Returns the current collateralization ratio of the vault as ray.
+    function ratio() public view override returns (uint256) {
         // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
         // or
         // Collateralization Ratio = collateral in vault * spot price * liquidation ratio / (dait debt)
+        // or
+        // r = (c * s * l) / d
         uint256 art;
         uint256 ink;
         uint256 mat;
@@ -211,21 +209,28 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         (ink, art) = IVat(vat).urns(ilk, urnHandler);
         (, rate, spot, , ) = IVat(vat).ilks(ilk);
         (, mat) = ISpotter(spotter).ilks(ilk);
-        return (ink * spot * mat) / (art * rate);
+        uint256 currentRatio = (((ink * spot) / RAY) * mat) /
+            ((art * rate) / RAY);
+        return currentRatio;
     }
 
-    // ToDo: figure out if this is necessary. If so, fix documentation.
-    // @dev I'm honestly not sure yet...
-    // @param toRatio Presumably the ratio to which you must compute the deltas
-    // @return deltaToTarget Delta from toRatio to ratioTarget
-    // @return deltaToTrigger Delta from toRatio to ratioTrigger
-    function readDeltas(uint256 toRatio)
-        external
-        view
-        override
-        returns (uint256 deltaToTarget, uint256 deltaToTrigger)
-    {
-        return (toRatio - ratioTrigger, toRatio - ratioTarget);
+    // @dev Returns the amount of Dai that should be repaid to bring vault to target ratio.
+    // @return Amount of Dai necessary that should be repaid to bring vault to target ratio.
+    function delta() external view override returns (uint256 amount) {
+        uint256 art;
+        uint256 ink;
+        uint256 mat;
+        uint256 rate;
+        uint256 spot;
+        uint256 debt;
+        (ink, art) = IVat(vat).urns(ilk, urnHandler);
+        (, rate, spot, , ) = IVat(vat).ilks(ilk);
+        (, mat) = ISpotter(spotter).ilks(ilk);
+        debt = (art * rate) / RAY;
+        // Equation to get debt at a given ratio:
+        // d = (c * s * l) / r
+        uint256 debtTarget = (((ink * spot) / RAY) * mat) / ratioTarget;
+        amount = debt - debtTarget;
     }
 
     // @dev Returns the call data to repay debt on the vault.
@@ -239,15 +244,26 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         override
         returns (Transaction[] memory)
     {
-        Transaction[] memory result = new Transaction[](1);
+        Transaction[] memory result = new Transaction[](2);
+        // TODO: add a call to dai.approve(dsProxy, amount)
         result[0] = Transaction({
+            to: assetDebt,
+            value: 0,
+            data: abi.encodeWithSignature(
+                "approve(address,uint256)",
+                dsProxy,
+                amount
+            ),
+            operation: Enum.Operation.Call
+        });
+        result[1] = Transaction({
             to: dsProxy,
             value: 0,
             data: abi.encodeWithSignature(
-                "execute",
+                "execute(address,bytes)",
                 dsProxyActions,
                 abi.encodeWithSignature(
-                    "wipe",
+                    "wipe(address,address,uint256,uint256)",
                     cdpManager,
                     daiJoin,
                     vault,

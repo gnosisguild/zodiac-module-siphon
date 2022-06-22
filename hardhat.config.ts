@@ -20,7 +20,8 @@ const argv = yargs
 
 // Load environment variables.
 dotenv.config();
-const { INFURA_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK } = process.env;
+const { INFURA_KEY, ALCHEMY_KEY, MNEMONIC, ETHERSCAN_API_KEY, PK } =
+  process.env;
 
 const DEFAULT_MNEMONIC =
   "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
@@ -49,11 +50,26 @@ const config: HardhatUserConfig = {
     sources: "contracts",
   },
   solidity: {
-    compilers: [{ version: "0.8.6" }, { version: "0.6.12" }],
+    compilers: [
+      { version: "0.8.6" },
+      { version: "0.6.12" },
+      { version: "0.4.23" },
+    ],
     settings: {
       optimizer: {
         enabled: true,
         runs: 1,
+      },
+    },
+    overrides: {
+      "contracts/test/DssProxy.sol": {
+        version: "0.4.23",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
     },
   },
@@ -69,6 +85,10 @@ const config: HardhatUserConfig = {
       ...sharedNetworkConfig,
       url: `https://rinkeby.infura.io/v3/${INFURA_KEY}`,
     },
+    kovan: {
+      ...sharedNetworkConfig,
+      url: `https://kovan.infura.io/v3/${INFURA_KEY}`,
+    },
     xdai: {
       ...sharedNetworkConfig,
       url: "https://xdai.poanetwork.dev",
@@ -80,6 +100,8 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     deployer: 0,
+    daiWhale: "0xc08a8a9f809107c5a7be6d90e315e4012c99f39a",
+    gnosisDAO: "0x0DA0C3e52C977Ed3cBc641fF02DD271c3ED55aFe",
   },
   mocha: {
     timeout: 2000000,

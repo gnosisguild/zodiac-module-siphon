@@ -23,7 +23,11 @@ contract Siphon is Module, MultisendEncoder {
 
     error UnsuitableLiquidityForPayment();
 
-    error NotEnoughLiquidityForPayment();
+    error UnstableLiquiditySource();
+
+    error NoLiquidityInvested();
+
+    error NoLiquidityWithdrawn();
 
     error WithdrawalFailed();
 
@@ -104,11 +108,16 @@ contract Siphon is Module, MultisendEncoder {
             revert UnsuitableLiquidityForPayment();
         }
 
-        (, uint256 amount) = dp.readDeltas(targetRatio);
-
-        if (lp.balance() < amount) {
-            revert NotEnoughLiquidityForPayment();
+        if (lp.balance() == 0) {
+            revert NoLiquidityInvested();
         }
+
+        if (!lp.canWithdraw()) {
+            revert UnstableLiquiditySource();
+        }
+
+        uint256 prevBalance = lp.assetBalance();
+        uint256 requiredAmountOut = dp.delta();
 
         address to;
         uint256 value;
@@ -116,14 +125,20 @@ contract Siphon is Module, MultisendEncoder {
         Enum.Operation operation;
 
         (to, value, data, operation) = encodeMultisend(
-            lp.withdrawalInstructions(amount)
+            lp.withdrawalInstructions(requiredAmountOut)
         );
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert WithdrawalFailed();
         }
 
+        uint256 actualAmountOut = lp.assetBalance() - prevBalance;
+
+        if (actualAmountOut == 0) {
+            revert NoLiquidityWithdrawn();
+        }
+
         (to, value, data, operation) = encodeMultisend(
-            dp.paymentInstructions(amount)
+            dp.paymentInstructions(actualAmountOut)
         );
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert PaymentFailed();
