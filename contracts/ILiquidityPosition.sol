@@ -10,8 +10,7 @@ interface ILiquidityPosition {
 
     function balance() external view returns (uint256);
 
-    // still not sure about this name
-    function isOpenForWithdrawals() external view returns (bool);
+    function canWithdraw() external view returns (bool);
 
     function withdrawalInstructions(uint256 amount)
         external

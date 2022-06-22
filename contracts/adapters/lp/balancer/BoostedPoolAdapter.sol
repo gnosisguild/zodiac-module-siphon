@@ -73,7 +73,7 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         return balanceEffective();
     }
 
-    function isOpenForWithdrawals() external view override returns (bool) {
+    function canWithdraw() external view override returns (bool) {
         // we should make sure the pool has at least 1M nomimal value?
         return isInParity();
     }

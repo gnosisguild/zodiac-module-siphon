@@ -112,7 +112,7 @@ contract Siphon is Module, MultisendEncoder {
             revert NoLiquidityInvested();
         }
 
-        if (!lp.isOpenForWithdrawals()) {
+        if (!lp.canWithdraw()) {
             revert UnstableLiquiditySource();
         }
 
