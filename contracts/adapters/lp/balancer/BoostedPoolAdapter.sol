@@ -88,7 +88,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
             IVault.SwapKind kind,
             uint256 amountIn,
             uint256 amountOut
-        ) = inferExitConditions(requestedAmountOut);
+        ) = calculateExit(requestedAmountOut);
 
         uint256 amountToUnstake = amountIn > unstakedBalance
             ? amountIn - unstakedBalance
@@ -167,7 +167,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         view
         returns (Transaction memory)
     {
-        //abi.encodeWithSignature("withdraw(uint256)", amount);
+        //0x2e1a7d4d -> "withdraw(uint256)"
         return
             Transaction({
                 to: gauge,
@@ -232,7 +232,6 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
             });
         }
 
-        // the actual return values
         return
             Transaction({
                 to: vault,
@@ -255,7 +254,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
             });
     }
 
-    function inferExitConditions(uint256 requestedAmountOut)
+    function calculateExit(uint256 requestedAmountOut)
         internal
         view
         returns (
