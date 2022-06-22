@@ -15,6 +15,7 @@ const simulatePayment = async (): Promise<void> => {
       {
         forking: {
           jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+          blockNumber: 15000000,
         },
       },
     ],
