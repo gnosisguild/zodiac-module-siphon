@@ -115,6 +115,14 @@ library BoostedPoolHelper {
             );
     }
 
+    function calcMaxStableOut(address pool, address tokenOut)
+        public
+        view
+        returns (uint256)
+    {
+        return LinearPoolHelper.calcMaxMainOut(findLinearPool(pool, tokenOut));
+    }
+
     function calcPrice(
         address pool,
         address stable1,

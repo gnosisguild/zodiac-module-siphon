@@ -120,6 +120,15 @@ library LinearPoolHelper {
         return Utils.downscaleUp(amountIn, scalingFactors[indexIn]);
     }
 
+    function calcMaxMainOut(address pool) external view returns (uint256) {
+        (uint256[] memory balances, , , ) = query(pool);
+
+        uint256 fee = ILinearPool(pool).getSwapFeePercentage();
+        uint256 balance = balances[ILinearPool(pool).getMainIndex()];
+
+        return balance - balance.mulUp(fee);
+    }
+
     function query(address _pool)
         private
         view
