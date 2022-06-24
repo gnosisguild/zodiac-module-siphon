@@ -271,17 +271,39 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         // If we are performing a GIVEN_OUT batchSwap and wanted to apply a 1% slippage tolerance,
         // we would multiple our positive assetDeltas by 1.01. We do not need to modify
         // our negative amounts because we know the exact amount we are getting out.
-
-        bool isTooCloseToCall = requestedAmountOut >
-            balanceEffective().mulDown(FixedPoint.ONE - (slippage + slippage));
-
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
-        // We can't know in advance how much we'll be getting out
-        // If the effective balance estimate is close to the requested amount,
-        // we just exit the entire position. This also avoids leaving
-        // crumbs in the liquidity position
-        if (isTooCloseToCall) {
+        // For BoostedPools there's a difference between the nominal balance and
+        // withdrawable balance
+        // This is dictated by LinearPools, where most of the liquidity is held in AAVE's
+        // aTokens. The actual stable will outnumbered vs AAVE's yield bearing equivalents.
+        // The equilibirum is to be maintaned by arbers. therefore we are limited on the
+        // batch swap to warever is readily available in stables
+        // For example, even tho a position is 20M, we might only be able to withdraw 5M
+        // In principle, some minutes later, our 15M position will be again good for
+        // another 5M withdraw
+        requestedAmountOut = Math.min(
+            requestedAmountOut,
+            BoostedPoolHelper.calcMaxStableOut(boostedPool, tokenOut)
+        );
+
+        uint256 amountInAvailable = unstakedBPT + stakedBPT;
+        uint256 amountInGivenOut = BoostedPoolHelper.calcBptInGivenStableOut(
+            boostedPool,
+            tokenOut,
+            requestedAmountOut
+        );
+
+        bool isAllOrCloseTo = amountInGivenOut >
+            FixedPoint.mulDown(
+                amountInAvailable,
+                FixedPoint.ONE - (slippage + slippage)
+            );
+
+        // Default mode is GIVEN_OUT, retrieving the exactly requested liquidity
+        // But if we are close, then we do GIVEN_IN
+        // we just exit everything, and get warever was out
+        if (isAllOrCloseTo) {
             kind = IVault.SwapKind.GIVEN_IN;
             amountIn = unstakedBPT + stakedBPT;
             amountOut = FixedPoint.mulDown(
@@ -295,11 +317,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         } else {
             kind = IVault.SwapKind.GIVEN_OUT;
             amountIn = FixedPoint.mulDown(
-                BoostedPoolHelper.calcBptInGivenStableOut(
-                    boostedPool,
-                    tokenOut,
-                    requestedAmountOut
-                ),
+                amountInGivenOut,
                 FixedPoint.ONE + slippage
             );
             amountOut = requestedAmountOut;
