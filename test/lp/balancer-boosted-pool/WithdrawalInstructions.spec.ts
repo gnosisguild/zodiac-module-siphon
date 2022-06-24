@@ -306,7 +306,11 @@ describe.only("LP: Balancer Boosted Pool", async () => {
       ).to.be.true;
     });
 
-    it("Withdrawing with limited DAI liquidity in LinearPool");
+    it("Requesting more DAI than available, and not enough BPT to cover");
+
+    it(
+      "Requesting more DAI than available, as a mega whale, draining LinearPool"
+    );
   });
 });
 
