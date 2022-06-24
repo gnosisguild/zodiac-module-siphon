@@ -48,8 +48,8 @@ async function setupAdapter(avatar: Contract) {
 }
 
 export async function setupConsolidateBPT() {
-  const { bptWhale } = await getNamedAccounts();
-  const bptWhaleSigner = hre.ethers.provider.getSigner(bptWhale);
+  const { BigWhale } = await getNamedAccounts();
+  const bptWhaleSigner = hre.ethers.provider.getSigner(BigWhale);
 
   const gauge = new hre.ethers.Contract(
     GAUGE_ADDRESS,
@@ -72,10 +72,10 @@ export async function setupConsolidateBPT() {
   ];
 
   for (let i = 0; i < GAUGE_WHALES.length; i++) {
-    const whale = GAUGE_WHALES[i];
+    const account = GAUGE_WHALES[i];
     const tx = {
-      from: bptWhale,
-      to: whale,
+      from: BigWhale,
+      to: account,
       value: ethers.utils.parseEther("1"),
     };
 
@@ -83,14 +83,14 @@ export async function setupConsolidateBPT() {
 
     await hre.network.provider.request({
       method: "hardhat_impersonateAccount",
-      params: [whale],
+      params: [account],
     });
-    const signer = await hre.ethers.provider.getSigner(whale);
-    const balance = await gauge.balanceOf(whale);
-    await gauge.connect(signer).transfer(bptWhale, balance);
+    const signer = await hre.ethers.provider.getSigner(account);
+    const balance = await gauge.balanceOf(account);
+    await gauge.connect(signer).transfer(BigWhale, balance);
   }
 
-  const balance: BigNumber = await gauge.balanceOf(bptWhale);
+  const balance: BigNumber = await gauge.balanceOf(BigWhale);
   await gauge["withdraw(uint256)"](
     balance.sub(BigNumber.from("1000000000000000000000000"))
   );
@@ -101,8 +101,8 @@ export async function setupFundAvatar(
   gaugeAmount: BigNumber,
   bptAmount: BigNumber
 ) {
-  const { bptWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(bptWhale);
+  const { BigWhale } = await getNamedAccounts();
+  const signer = hre.ethers.provider.getSigner(BigWhale);
 
   const gauge = await hre.ethers.getContractAt("ERC20", GAUGE_ADDRESS);
   const bpt = await hre.ethers.getContractAt("ERC20", POOL_ADDRESS);
@@ -120,11 +120,29 @@ export async function setup() {
   const gauge = await hre.ethers.getContractAt("ERC20", GAUGE_ADDRESS);
   const dai = await hre.ethers.getContractAt("ERC20", DAI.main);
 
-  return { avatar, adapter, pool, gauge, dai };
+  const deployment = await deployments.get("BoostedPoolHelper");
+  const boostedPoolHelper = new ethers.Contract(
+    deployment.address,
+    deployment.abi,
+    hre.ethers.provider
+  );
+
+  return { avatar, adapter, pool, gauge, dai, boostedPoolHelper };
 }
 
 const vaultAbi = [
+  "function WETH() view returns (address)",
   "function batchSwap(uint8 kind, tuple(bytes32 poolId, uint256 assetInIndex, uint256 assetOutIndex, uint256 amount, bytes userData)[] swaps, address[] assets, tuple(address sender, bool fromInternalBalance, address recipient, bool toInternalBalance) funds, int256[] limits, uint256 deadline) payable returns (int256[] assetDeltas)",
+  "function exitPool(bytes32 poolId, address sender, address recipient, tuple(address[] assets, uint256[] minAmountsOut, bytes userData, bool toInternalBalance) request)",
+  "function flashLoan(address recipient, address[] tokens, uint256[] amounts, bytes userData)",
+  "function getInternalBalance(address user, address[] tokens) view returns (uint256[] balances)",
+  "function getPausedState() view returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime)",
+  "function getPool(bytes32 poolId) view returns (address, uint8)",
+  "function getPoolTokenInfo(bytes32 poolId, address token) view returns (uint256 cash, uint256 managed, uint256 lastChangeBlock, address assetManager)",
+  "function getPoolTokens(bytes32 poolId) view returns (address[] tokens, uint256[] balances, uint256 lastChangeBlock)",
+  "function getProtocolFeesCollector() view returns (address)",
+  "function queryBatchSwap(uint8 kind, tuple(bytes32 poolId, uint256 assetInIndex, uint256 assetOutIndex, uint256 amount, bytes userData)[] swaps, address[] assets, tuple(address sender, bool fromInternalBalance, address recipient, bool toInternalBalance) funds) returns (int256[])",
+  "function swap(tuple(bytes32 poolId, uint8 kind, address assetIn, address assetOut, uint256 amount, bytes userData) singleSwap, tuple(address sender, bool fromInternalBalance, address recipient, bool toInternalBalance) funds, uint256 limit, uint256 deadline) payable returns (uint256 amountCalculated)",
 ];
 
 const gaugeAbi = [
@@ -143,4 +161,26 @@ const gaugeAbi = [
   "function decimals() view returns (uint256)",
   "function balanceOf(address arg0) view returns (uint256)",
   "function totalSupply() view returns (uint256)",
+];
+
+const linearPoolAbi = [
+  "function balanceOf(address account) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function getBptIndex() view returns (uint256)",
+  "function getMainIndex() view returns (uint256)",
+  "function getMainToken() view returns (address)",
+  "function getOwner() view returns (address)",
+  "function getPoolId() view returns (bytes32)",
+  "function getRate() view returns (uint256)",
+  "function getScalingFactors() view returns (uint256[])",
+  "function getSwapFeePercentage() view returns (uint256)",
+  "function getTargets() view returns (uint256 lowerTarget, uint256 upperTarget)",
+  "function getVault() view returns (address)",
+  "function getVirtualSupply() view returns (uint256)",
+  "function getWrappedIndex() view returns (uint256)",
+  "function getWrappedToken() view returns (address)",
+  "function getWrappedTokenRate() view returns (uint256)",
+  "function totalSupply() view returns (uint256)",
+  "function transfer(address recipient, uint256 amount) returns (bool)",
+  "function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
 ];
