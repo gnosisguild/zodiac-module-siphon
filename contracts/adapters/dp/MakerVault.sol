@@ -233,7 +233,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         returns (Transaction[] memory)
     {
         Transaction[] memory result = new Transaction[](2);
-        // TODO: add a call to dai.approve(dsProxy, amount)
         result[0] = Transaction({
             to: asset,
             value: 0,
