@@ -7,21 +7,27 @@ import "./MultisendEncoder.sol";
 import "./IDebtPosition.sol";
 import "./ILiquidityPosition.sol";
 
+struct PaymentChannel {
+    address dp;
+    address lp;
+}
+
 contract Siphon is Module, MultisendEncoder {
-    mapping(address => bool) public dps;
-    mapping(address => bool) public lps;
+    mapping(string => PaymentChannel) public channels;
 
-    error DebtPositionNotEnabled();
+    error PaymentChannelAlreadyExists();
 
-    error LiquidityPositionNotEnabled();
+    error PaymentChannelNotFound();
+
+    error UnsuitableAdapterAddress();
+
+    error UnsuitableAdapterAsset();
 
     error TriggerRatioNotSet();
 
     error TargetRatioNotSet();
 
     error DebtPositionIsHealthy();
-
-    error UnsuitableLiquidityForPayment();
 
     error UnstableLiquiditySource();
 
@@ -45,7 +51,7 @@ contract Siphon is Module, MultisendEncoder {
         setUp(initParams);
     }
 
-    function setUp(bytes memory initParams) public override {
+    function setUp(bytes memory initParams) public override initializer {
         (address _owner, address _avatar, address _target) = abi.decode(
             initParams,
             (address, address, address)
@@ -56,38 +62,45 @@ contract Siphon is Module, MultisendEncoder {
         target = _target;
 
         transferOwnership(_owner);
-
-        // TODO missing setups
     }
 
-    function enableDebtPosition(address dp) public onlyOwner {
-        dps[dp] = true;
-    }
-
-    function disableDebtPosition(address dp) public onlyOwner {
-        delete dps[dp];
-    }
-
-    function enableLiquidityPosition(address lp) public onlyOwner {
-        lps[lp] = true;
-    }
-
-    function disableLiquidityPosition(address lp) public onlyOwner {
-        delete lps[lp];
-    }
-
-    // missing openzeppelin ACL role for payDebt
-    function payDebt(address _dp, address _lp) public {
-        if (dps[_dp] != true) {
-            revert DebtPositionNotEnabled();
+    function enableChannel(
+        string memory name,
+        address dp,
+        address lp
+    ) public onlyOwner {
+        if (isChannelEnabled(name)) {
+            revert PaymentChannelAlreadyExists();
         }
 
-        if (lps[_lp] != true) {
-            revert LiquidityPositionNotEnabled();
+        if (dp == address(0) || lp == address(0)) {
+            revert UnsuitableAdapterAddress();
         }
 
-        IDebtPosition dp = IDebtPosition(_dp);
-        ILiquidityPosition lp = ILiquidityPosition(_lp);
+        if (ILiquidityPosition(dp).asset() != IDebtPosition(lp).asset()) {
+            revert UnsuitableAdapterAsset();
+        }
+
+        channels[name] = PaymentChannel({dp: dp, lp: lp});
+    }
+
+    function disableChannel(string memory name) public onlyOwner {
+        if (!isChannelEnabled(name)) {
+            revert PaymentChannelNotFound();
+        }
+
+        delete channels[name];
+    }
+
+    function payDebt(string memory name) public {
+        if (!isChannelEnabled(name)) {
+            revert PaymentChannelNotFound();
+        }
+
+        PaymentChannel storage channel = channels[name];
+
+        IDebtPosition dp = IDebtPosition(channel.dp);
+        ILiquidityPosition lp = ILiquidityPosition(channel.lp);
 
         uint256 triggerRatio = dp.ratioTrigger();
         if (triggerRatio == 0) {
@@ -102,10 +115,6 @@ contract Siphon is Module, MultisendEncoder {
         uint256 targetRatio = dp.ratioTarget();
         if (targetRatio < triggerRatio) {
             revert TargetRatioNotSet();
-        }
-
-        if (dp.asset() != lp.asset()) {
-            revert UnsuitableLiquidityForPayment();
         }
 
         if (lp.balance() == 0) {
@@ -143,5 +152,10 @@ contract Siphon is Module, MultisendEncoder {
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert PaymentFailed();
         }
+    }
+
+    function isChannelEnabled(string memory name) internal view returns (bool) {
+        PaymentChannel storage channel = channels[name];
+        return channel.dp != address(0) && channel.lp != address(0);
     }
 }
