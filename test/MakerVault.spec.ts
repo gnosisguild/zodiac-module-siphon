@@ -7,6 +7,7 @@ const ratioTarget = 4586919454964052515806212538n;
 const ratioTrigger = 4211626045012448219058431512n;
 const expectedRatio = BigNumber.from(4169926777240047741642011399n);
 const expectedDelta = BigNumber.from(2479023057692998402742223n);
+const [user] = waffle.provider.getWallets();
 
 describe("DP: Maker", async () => {
   const baseSetup = deployments.createFixture(async () => {
@@ -37,6 +38,7 @@ describe("DP: Maker", async () => {
       daiJoin.address, // daiJoin
       dsProxy.address, // dsProxy
       dsProxyActions.address, // dsProxyActions
+      user.address,
       spotter.address, // spotter
       ratioTarget, // ratio target
       ratioTrigger, // ratio trigger
@@ -55,6 +57,7 @@ describe("DP: Maker", async () => {
       vat,
     };
   });
+
   describe("constructor", async () => {
     it("sets variables correctly", async () => {
       const {
@@ -72,6 +75,7 @@ describe("DP: Maker", async () => {
       expect(await adapter.daiJoin()).to.equal(daiJoin.address);
       expect(await adapter.dsProxy()).to.equal(dsProxy.address);
       expect(await adapter.dsProxyActions()).to.equal(dsProxyActions.address);
+      expect(await adapter.owner()).to.equal(user.address);
       expect(await adapter.spotter()).to.equal(spotter.address);
       expect(await adapter.ratioTarget()).to.equal(ratioTarget);
       expect(await adapter.ratioTrigger()).to.equal(ratioTrigger);
@@ -95,6 +99,7 @@ describe("DP: Maker", async () => {
       expect(ratioTarget).to.equal(42);
     });
   });
+
   describe("setRatioTrigger()", async () => {
     it("Can only be called by owner", async () => {
       const { adapter } = await baseSetup();
@@ -111,6 +116,7 @@ describe("DP: Maker", async () => {
       expect(ratioTrigger).to.equal(42);
     });
   });
+
   describe("ratio()", async () => {
     it("Returns Correct Ratio", async () => {
       const { adapter } = await baseSetup();
@@ -118,6 +124,7 @@ describe("DP: Maker", async () => {
       expect(ratio).to.equal(expectedRatio);
     });
   });
+
   describe("delta()", async () => {
     it("Returns Correct Delta", async () => {
       const { adapter } = await baseSetup();
@@ -125,6 +132,7 @@ describe("DP: Maker", async () => {
       expect(delta).to.equal(expectedDelta);
     });
   });
+
   describe("paymentInstructions()", async () => {
     it("Correctly encodes payment instructions", async () => {
       const { adapter, dsProxy, dai } = await baseSetup();

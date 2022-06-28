@@ -92,6 +92,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         address _daiJoin,
         address _dsProxy,
         address _dsProxyActions,
+        address _owner,
         address _spotter,
         uint256 _ratioTarget,
         uint256 _ratioTrigger,
@@ -103,6 +104,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             _daiJoin,
             _dsProxy,
             _dsProxyActions,
+            _owner,
             _spotter,
             _ratioTarget,
             _ratioTrigger,
@@ -118,6 +120,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
             address _daiJoin,
             address _dsProxy,
             address _dsProxyActions,
+            address _owner,
             address _spotter,
             uint256 _ratioTarget,
             uint256 _ratioTrigger,
@@ -125,6 +128,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         ) = abi.decode(
                 initParams,
                 (
+                    address,
                     address,
                     address,
                     address,
@@ -152,6 +156,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         ilk = ICDPManager(cdpManager).ilks(vault);
         urnHandler = ICDPManager(cdpManager).urns(vault);
         vat = ICDPManager(cdpManager).vat();
+        transferOwnership(_owner);
 
         emit AdapterSetup(
             cdpManager,
@@ -233,7 +238,6 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         returns (Transaction[] memory)
     {
         Transaction[] memory result = new Transaction[](2);
-        // TODO: add a call to dai.approve(dsProxy, amount)
         result[0] = Transaction({
             to: asset,
             value: 0,
