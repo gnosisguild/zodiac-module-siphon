@@ -1,17 +1,13 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity ^0.8.6;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
 import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 
 import "../../../ILiquidityPosition.sol";
 
 import "../../../helpers/balancer/BoostedPool.sol";
 
-/*FactoryFriendly*/
-contract BoostedPoolAdapter is ILiquidityPosition {
+contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
     using FixedPoint for uint256;
 
     address public investor;
@@ -24,12 +20,14 @@ contract BoostedPoolAdapter is ILiquidityPosition {
     uint256 public slippage;
 
     constructor(
+        address _owner,
         address _investor,
         address _pool,
         address _gauge,
         address _tokenOut
     ) {
         bytes memory initParams = abi.encode(
+            _owner,
             _investor,
             _pool,
             _gauge,
@@ -38,14 +36,18 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         setUp(initParams);
     }
 
-    function setUp(bytes memory initParams) public {
+    function setUp(bytes memory initParams) public override initializer {
         (
+            address _owner,
             address _investor,
             address _pool,
             address _gauge,
             address _tokenOut
-        ) = abi.decode(initParams, (address, address, address, address));
-        // __Ownable_init();
+        ) = abi.decode(
+                initParams,
+                (address, address, address, address, address)
+            );
+        __Ownable_init();
 
         investor = _investor;
         vault = IPool(_pool).getVault();
@@ -58,14 +60,11 @@ contract BoostedPoolAdapter is ILiquidityPosition {
         parityTolerance = 2e15;
         // 50 basis points
         slippage = 5e15;
+        _transferOwnership(_owner);
     }
 
     function asset() external view override returns (address) {
         return tokenOut;
-    }
-
-    function assetBalance() external view override returns (uint256) {
-        return IERC20(tokenOut).balanceOf(investor);
     }
 
     function balance() external view override returns (uint256) {

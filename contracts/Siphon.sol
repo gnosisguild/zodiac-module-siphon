@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity ^0.8.6;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
 
 import "./MultisendEncoder.sol";
@@ -125,8 +126,10 @@ contract Siphon is Module, MultisendEncoder {
             revert UnstableLiquiditySource();
         }
 
-        uint256 prevBalance = lp.assetBalance();
-        uint256 requiredAmountOut = dp.delta();
+        uint256 prevBalance = IERC20(lp.asset()).balanceOf(avatar);
+        uint256 nextBalance;
+        uint256 requestedAmountOut = dp.delta();
+        uint256 actualAmountOut;
 
         address to;
         uint256 value;
@@ -134,13 +137,14 @@ contract Siphon is Module, MultisendEncoder {
         Enum.Operation operation;
 
         (to, value, data, operation) = encodeMultisend(
-            lp.withdrawalInstructions(requiredAmountOut)
+            lp.withdrawalInstructions(requestedAmountOut)
         );
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert WithdrawalFailed();
         }
 
-        uint256 actualAmountOut = lp.assetBalance() - prevBalance;
+        nextBalance = IERC20(lp.asset()).balanceOf(avatar);
+        actualAmountOut = nextBalance - prevBalance;
 
         if (actualAmountOut == 0) {
             revert NoLiquidityWithdrawn();
