@@ -7,21 +7,21 @@ import "./MultisendEncoder.sol";
 import "./IDebtPosition.sol";
 import "./ILiquidityPosition.sol";
 
-struct PaymentChannel {
+struct AssetFlow {
     address dp;
     address lp;
 }
 
 contract Siphon is Module, MultisendEncoder {
-    mapping(string => PaymentChannel) public channels;
+    mapping(string => AssetFlow) public flows;
 
-    error PaymentChannelAlreadyExists();
+    error FlowIsPlugged();
 
-    error PaymentChannelNotFound();
+    error FlowIsUnplugged();
 
-    error UnsuitableAdapterAddress();
+    error UnsuitableAdapter();
 
-    error UnsuitableAdapterAsset();
+    error AssetMismatch();
 
     error TriggerRatioNotSet();
 
@@ -64,43 +64,43 @@ contract Siphon is Module, MultisendEncoder {
         transferOwnership(_owner);
     }
 
-    function enableChannel(
-        string memory name,
+    function plug(
+        string memory tube,
         address dp,
         address lp
     ) public onlyOwner {
-        if (isChannelEnabled(name)) {
-            revert PaymentChannelAlreadyExists();
+        if (isPlugged(tube)) {
+            revert FlowIsPlugged();
         }
 
         if (dp == address(0) || lp == address(0)) {
-            revert UnsuitableAdapterAddress();
+            revert UnsuitableAdapter();
         }
 
         if (ILiquidityPosition(dp).asset() != IDebtPosition(lp).asset()) {
-            revert UnsuitableAdapterAsset();
+            revert AssetMismatch();
         }
 
-        channels[name] = PaymentChannel({dp: dp, lp: lp});
+        flows[tube] = AssetFlow({dp: dp, lp: lp});
     }
 
-    function disableChannel(string memory name) public onlyOwner {
-        if (!isChannelEnabled(name)) {
-            revert PaymentChannelNotFound();
+    function unplug(string memory tube) public onlyOwner {
+        if (!isPlugged(tube)) {
+            revert FlowIsUnplugged();
         }
 
-        delete channels[name];
+        delete flows[tube];
     }
 
-    function payDebt(string memory name) public {
-        if (!isChannelEnabled(name)) {
-            revert PaymentChannelNotFound();
+    function payDebt(string memory tube) public {
+        if (!isPlugged(tube)) {
+            revert FlowIsUnplugged();
         }
 
-        PaymentChannel storage channel = channels[name];
+        AssetFlow storage flow = flows[tube];
 
-        IDebtPosition dp = IDebtPosition(channel.dp);
-        ILiquidityPosition lp = ILiquidityPosition(channel.lp);
+        IDebtPosition dp = IDebtPosition(flow.dp);
+        ILiquidityPosition lp = ILiquidityPosition(flow.lp);
 
         uint256 triggerRatio = dp.ratioTrigger();
         if (triggerRatio == 0) {
@@ -154,8 +154,8 @@ contract Siphon is Module, MultisendEncoder {
         }
     }
 
-    function isChannelEnabled(string memory name) internal view returns (bool) {
-        PaymentChannel storage channel = channels[name];
-        return channel.dp != address(0) && channel.lp != address(0);
+    function isPlugged(string memory tube) internal view returns (bool) {
+        AssetFlow storage flow = flows[tube];
+        return flow.dp != address(0) && flow.lp != address(0);
     }
 }
