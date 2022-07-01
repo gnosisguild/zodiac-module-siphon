@@ -1,27 +1,34 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity ^0.8.6;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
 
 import "./MultisendEncoder.sol";
 import "./IDebtPosition.sol";
 import "./ILiquidityPosition.sol";
 
+struct AssetFlow {
+    address dp;
+    address lp;
+}
+
 contract Siphon is Module, MultisendEncoder {
-    mapping(address => bool) public dps;
-    mapping(address => bool) public lps;
+    mapping(string => AssetFlow) public flows;
 
-    error DebtPositionNotEnabled();
+    error FlowIsPlugged();
 
-    error LiquidityPositionNotEnabled();
+    error FlowIsUnplugged();
+
+    error UnsuitableAdapter();
+
+    error AssetMismatch();
 
     error TriggerRatioNotSet();
 
     error TargetRatioNotSet();
 
     error DebtPositionIsHealthy();
-
-    error UnsuitableLiquidityForPayment();
 
     error UnstableLiquiditySource();
 
@@ -45,7 +52,7 @@ contract Siphon is Module, MultisendEncoder {
         setUp(initParams);
     }
 
-    function setUp(bytes memory initParams) public override {
+    function setUp(bytes memory initParams) public override initializer {
         (address _owner, address _avatar, address _target) = abi.decode(
             initParams,
             (address, address, address)
@@ -56,38 +63,45 @@ contract Siphon is Module, MultisendEncoder {
         target = _target;
 
         transferOwnership(_owner);
-
-        // TODO missing setups
     }
 
-    function enableDebtPosition(address dp) public onlyOwner {
-        dps[dp] = true;
-    }
-
-    function disableDebtPosition(address dp) public onlyOwner {
-        delete dps[dp];
-    }
-
-    function enableLiquidityPosition(address lp) public onlyOwner {
-        lps[lp] = true;
-    }
-
-    function disableLiquidityPosition(address lp) public onlyOwner {
-        delete lps[lp];
-    }
-
-    // missing openzeppelin ACL role for payDebt
-    function payDebt(address _dp, address _lp) public {
-        if (dps[_dp] != true) {
-            revert DebtPositionNotEnabled();
+    function plug(
+        string memory tube,
+        address dp,
+        address lp
+    ) public onlyOwner {
+        if (isPlugged(tube)) {
+            revert FlowIsPlugged();
         }
 
-        if (lps[_lp] != true) {
-            revert LiquidityPositionNotEnabled();
+        if (dp == address(0) || lp == address(0)) {
+            revert UnsuitableAdapter();
         }
 
-        IDebtPosition dp = IDebtPosition(_dp);
-        ILiquidityPosition lp = ILiquidityPosition(_lp);
+        if (ILiquidityPosition(dp).asset() != IDebtPosition(lp).asset()) {
+            revert AssetMismatch();
+        }
+
+        flows[tube] = AssetFlow({dp: dp, lp: lp});
+    }
+
+    function unplug(string memory tube) public onlyOwner {
+        if (!isPlugged(tube)) {
+            revert FlowIsUnplugged();
+        }
+
+        delete flows[tube];
+    }
+
+    function payDebt(string memory tube) public {
+        if (!isPlugged(tube)) {
+            revert FlowIsUnplugged();
+        }
+
+        AssetFlow storage flow = flows[tube];
+
+        IDebtPosition dp = IDebtPosition(flow.dp);
+        ILiquidityPosition lp = ILiquidityPosition(flow.lp);
 
         uint256 triggerRatio = dp.ratioTrigger();
         if (triggerRatio == 0) {
@@ -104,10 +118,6 @@ contract Siphon is Module, MultisendEncoder {
             revert TargetRatioNotSet();
         }
 
-        if (dp.asset() != lp.asset()) {
-            revert UnsuitableLiquidityForPayment();
-        }
-
         if (lp.balance() == 0) {
             revert NoLiquidityInvested();
         }
@@ -116,8 +126,10 @@ contract Siphon is Module, MultisendEncoder {
             revert UnstableLiquiditySource();
         }
 
-        uint256 prevBalance = lp.assetBalance();
-        uint256 requiredAmountOut = dp.delta();
+        uint256 prevBalance = IERC20(lp.asset()).balanceOf(avatar);
+        uint256 nextBalance;
+        uint256 requestedAmountOut = dp.delta();
+        uint256 actualAmountOut;
 
         address to;
         uint256 value;
@@ -125,13 +137,14 @@ contract Siphon is Module, MultisendEncoder {
         Enum.Operation operation;
 
         (to, value, data, operation) = encodeMultisend(
-            lp.withdrawalInstructions(requiredAmountOut)
+            lp.withdrawalInstructions(requestedAmountOut)
         );
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert WithdrawalFailed();
         }
 
-        uint256 actualAmountOut = lp.assetBalance() - prevBalance;
+        nextBalance = IERC20(lp.asset()).balanceOf(avatar);
+        actualAmountOut = nextBalance - prevBalance;
 
         if (actualAmountOut == 0) {
             revert NoLiquidityWithdrawn();
@@ -143,5 +156,10 @@ contract Siphon is Module, MultisendEncoder {
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert PaymentFailed();
         }
+    }
+
+    function isPlugged(string memory tube) internal view returns (bool) {
+        AssetFlow storage flow = flows[tube];
+        return flow.dp != address(0) && flow.lp != address(0);
     }
 }
