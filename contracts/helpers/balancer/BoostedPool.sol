@@ -137,8 +137,8 @@ library BoostedPoolHelper {
         );
 
         uint256 price = FixedPoint.divDown(
-            Utils.inferAndUpscale(amountIn, stable1),
-            Utils.inferAndUpscale(amountOut, stable2)
+            Utils.inferAndUpscale(amountOut, stable2),
+            Utils.inferAndUpscale(amountIn, stable1)
         );
 
         return price;
@@ -167,8 +167,8 @@ library BoostedPoolHelper {
         );
 
         uint256 price = FixedPoint.divDown(
-            Utils.inferAndUpscale(amountOutInStable1, stable1),
-            Utils.inferAndUpscale(amountOutInStable2, stable2)
+            Utils.inferAndUpscale(amountOutInStable2, stable2),
+            Utils.inferAndUpscale(amountOutInStable1, stable1)
         );
 
         return price;
@@ -194,7 +194,7 @@ library BoostedPoolHelper {
     }
 
     function findLinearPool(address pool, address mainToken)
-        internal
+        public
         view
         returns (address)
     {

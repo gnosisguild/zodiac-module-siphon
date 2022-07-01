@@ -294,7 +294,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
             requestedAmountOut
         );
 
-        bool isAllOrCloseTo = amountInGivenOut >
+        bool isFullExit = amountInGivenOut >
             FixedPoint.mulDown(
                 amountInAvailable,
                 FixedPoint.ONE - (slippage + slippage)
@@ -303,7 +303,7 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         // Default mode is GIVEN_OUT, retrieving the exactly requested liquidity
         // But if we are close, then we do GIVEN_IN
         // we just exit everything, and get warever was out
-        if (isAllOrCloseTo) {
+        if (isFullExit) {
             kind = IVault.SwapKind.GIVEN_IN;
             amountIn = unstakedBPT + stakedBPT;
             amountOut = FixedPoint.mulDown(
@@ -359,15 +359,16 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return (price1, price2);
     }
 
-    function setParityTolerane(uint256 _parityTolerance) external onlyOwner {
-        parityTolerance = _parityTolerance;
+    function setParityTolerance(uint256 bips) external onlyOwner {
+        parityTolerance = basisPoints(bips);
     }
 
-    function setSlippage(uint256 _slippage) external onlyOwner {
-        slippage = _slippage;
+    function setSlippage(uint256 bips) external onlyOwner {
+        slippage = basisPoints(bips);
     }
 
     function basisPoints(uint256 bips) public pure returns (uint256) {
+        require(bips <= 10000, "Invalid BIPS value");
         return bips * 1e14;
     }
 }
