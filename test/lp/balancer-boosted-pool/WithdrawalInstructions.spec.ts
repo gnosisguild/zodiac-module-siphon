@@ -1,30 +1,21 @@
 import { expect } from "chai";
-import dotenv from "dotenv";
 import { BigNumber } from "ethers";
 import hre, { deployments, getNamedAccounts } from "hardhat";
 
-import { setup, setupConsolidateBPT, setupFundAvatar } from "./setup";
+import {
+  fork,
+  forkReset,
+  setup,
+  setupFundWhaleWithBPT,
+  setupFundAvatar,
+} from "./setup";
 
-describe.only("LP: Balancer Boosted Pool", async () => {
+describe("LP: Balancer Boosted Pool", async () => {
   describe("withdrawalInstructions", async () => {
     let baseSetup: any;
 
     before(async () => {
-      // Load environment variables.
-      dotenv.config();
-      const { ALCHEMY_KEY } = process.env;
-      // fork mainnet
-      await hre.network.provider.request({
-        method: "hardhat_reset",
-        params: [
-          {
-            forking: {
-              jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-              blockNumber: 15012865,
-            },
-          },
-        ],
-      });
+      await fork(15012865);
 
       baseSetup = deployments.createFixture(async ({ deployments }) => {
         await deployments.fixture();
@@ -32,7 +23,7 @@ describe.only("LP: Balancer Boosted Pool", async () => {
         const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
           await setup();
 
-        await setupConsolidateBPT();
+        await setupFundWhaleWithBPT();
 
         await setupFundAvatar(
           avatar,
@@ -45,10 +36,7 @@ describe.only("LP: Balancer Boosted Pool", async () => {
     });
 
     after(async () => {
-      await hre.network.provider.request({
-        method: "hardhat_reset",
-        params: [],
-      });
+      await forkReset();
     });
 
     it("Withdrawing more than available balance yields full exit - outGivenIn", async () => {
