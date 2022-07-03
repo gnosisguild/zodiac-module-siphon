@@ -326,19 +326,6 @@ contract BoostedPoolAdapter is ILiquidityPosition, FactoryFriendly {
         }
     }
 
-    function _debugPriceDeltas() public view returns (uint256, uint256) {
-        (uint256 price1, uint256 price2) = _debugPrices();
-        uint256 delta1 = price1 > FixedPoint.ONE
-            ? price1 - FixedPoint.ONE
-            : FixedPoint.ONE - price1;
-
-        uint256 delta2 = price2 > FixedPoint.ONE
-            ? price2 - FixedPoint.ONE
-            : FixedPoint.ONE - price2;
-
-        return (delta1, delta2);
-    }
-
     function _debugPrices() public view returns (uint256, uint256) {
         address[] memory stableTokens = BoostedPoolHelper.findStableTokens(
             boostedPool

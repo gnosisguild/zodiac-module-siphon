@@ -12,8 +12,6 @@ library BoostedPoolHelper {
     using FixedPoint for uint256;
 
     function nominalValue(address pool) external view returns (uint256) {
-        // TODO first balance is just naive
-        // pending taking into account how much liquidity is in the LinearPool
         address[] memory linearPools = findLinearPools(pool);
         uint256 total;
         for (uint256 i = 0; i < linearPools.length; i++) {
