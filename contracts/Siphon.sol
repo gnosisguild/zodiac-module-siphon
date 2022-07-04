@@ -66,11 +66,11 @@ contract Siphon is Module, MultisendEncoder {
     }
 
     function plug(
-        string memory tube,
+        string memory flow,
         address dp,
         address lp
     ) public onlyOwner {
-        if (isPlugged(tube)) {
+        if (isPlugged(flow)) {
             revert FlowIsPlugged();
         }
 
@@ -82,26 +82,24 @@ contract Siphon is Module, MultisendEncoder {
             revert AssetMismatch();
         }
 
-        flows[tube] = AssetFlow({dp: dp, lp: lp});
+        flows[flow] = AssetFlow({dp: dp, lp: lp});
     }
 
-    function unplug(string memory tube) public onlyOwner {
-        if (!isPlugged(tube)) {
+    function unplug(string memory flow) public onlyOwner {
+        if (!isPlugged(flow)) {
             revert FlowIsUnplugged();
         }
 
-        delete flows[tube];
+        delete flows[flow];
     }
 
-    function payDebt(string memory tube) public {
-        if (!isPlugged(tube)) {
+    function payDebt(string memory flow) public {
+        if (!isPlugged(flow)) {
             revert FlowIsUnplugged();
         }
 
-        AssetFlow storage flow = flows[tube];
-
-        IDebtPosition dp = IDebtPosition(flow.dp);
-        ILiquidityPosition lp = ILiquidityPosition(flow.lp);
+        IDebtPosition dp = IDebtPosition(flows[flow].dp);
+        ILiquidityPosition lp = ILiquidityPosition(flows[flow].lp);
 
         uint256 triggerRatio = dp.ratioTrigger();
         if (triggerRatio == 0) {
@@ -158,8 +156,7 @@ contract Siphon is Module, MultisendEncoder {
         }
     }
 
-    function isPlugged(string memory tube) internal view returns (bool) {
-        AssetFlow storage flow = flows[tube];
-        return flow.dp != address(0) && flow.lp != address(0);
+    function isPlugged(string memory flow) internal view returns (bool) {
+        return flows[flow].dp != address(0) && flows[flow].lp != address(0);
     }
 }
