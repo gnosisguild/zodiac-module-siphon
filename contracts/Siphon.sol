@@ -8,17 +8,17 @@ import "./MultisendEncoder.sol";
 import "./IDebtPosition.sol";
 import "./ILiquidityPosition.sol";
 
-struct AssetFlow {
+struct Tube {
     address dp;
     address lp;
 }
 
 contract Siphon is Module, MultisendEncoder {
-    mapping(string => AssetFlow) public flows;
+    mapping(string => Tube) public tubes;
 
-    error FlowIsPlugged();
+    error TubeIsConnected();
 
-    error FlowIsUnplugged();
+    error TubeIsDisconnected();
 
     error UnsuitableAdapter();
 
@@ -65,13 +65,13 @@ contract Siphon is Module, MultisendEncoder {
         transferOwnership(_owner);
     }
 
-    function plug(
-        string memory flow,
+    function connectTube(
+        string memory tube,
         address dp,
         address lp
     ) public onlyOwner {
-        if (isPlugged(flow)) {
-            revert FlowIsPlugged();
+        if (isConnected(tube)) {
+            revert TubeIsConnected();
         }
 
         if (dp == address(0) || lp == address(0)) {
@@ -82,24 +82,24 @@ contract Siphon is Module, MultisendEncoder {
             revert AssetMismatch();
         }
 
-        flows[flow] = AssetFlow({dp: dp, lp: lp});
+        tubes[tube] = Tube({dp: dp, lp: lp});
     }
 
-    function unplug(string memory flow) public onlyOwner {
-        if (!isPlugged(flow)) {
-            revert FlowIsUnplugged();
+    function disconnectTube(string memory tube) public onlyOwner {
+        if (!isConnected(tube)) {
+            revert TubeIsDisconnected();
         }
 
-        delete flows[flow];
+        delete tubes[tube];
     }
 
-    function payDebt(string memory flow) public {
-        if (!isPlugged(flow)) {
-            revert FlowIsUnplugged();
+    function payDebt(string memory tube) public {
+        if (!isConnected(tube)) {
+            revert TubeIsDisconnected();
         }
 
-        IDebtPosition dp = IDebtPosition(flows[flow].dp);
-        ILiquidityPosition lp = ILiquidityPosition(flows[flow].lp);
+        IDebtPosition dp = IDebtPosition(tubes[tube].dp);
+        ILiquidityPosition lp = ILiquidityPosition(tubes[tube].lp);
 
         uint256 triggerRatio = dp.ratioTrigger();
         if (triggerRatio == 0) {
@@ -156,7 +156,7 @@ contract Siphon is Module, MultisendEncoder {
         }
     }
 
-    function isPlugged(string memory flow) internal view returns (bool) {
-        return flows[flow].dp != address(0) && flows[flow].lp != address(0);
+    function isConnected(string memory tube) internal view returns (bool) {
+        return tubes[tube].dp != address(0) && tubes[tube].lp != address(0);
     }
 }
