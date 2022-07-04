@@ -93,7 +93,7 @@ contract Siphon is Module, MultisendEncoder {
         delete tubes[tube];
     }
 
-    function payDebt(string memory tube) public {
+    function siphon(string memory tube) public {
         if (!isConnected(tube)) {
             revert TubeIsDisconnected();
         }
