@@ -55,6 +55,7 @@ async function setupAdapter(avatar: Contract) {
   });
   const adapter = await Adapter.deploy(
     avatar.address,
+    avatar.address,
     // pool
     POOL_ADDRESS,
     // gauge
