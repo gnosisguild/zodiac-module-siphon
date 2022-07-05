@@ -11,11 +11,11 @@ If you have any questions about Zodiac, join the [Gnosis Guild Discord](https://
 
 This module is exposes a public interface which allows anyone to trigger an Avatar to withdraw from a designated luiquidity position in order to pay down some of its debt in a designated debt position, thereby improving the health of the position.
 
-The owner of the module can set target and trigger collateral ratios for the debt position. If the collateral ratio of the debt position falls below the trigger ratio, anyone can call `payDebt()` to trigger the withdrawal of enough capital from the liquidity position to return the debt position to the target ratio.
+The owner of the module can set target and trigger collateral ratios for the debt position. If the collateral ratio of the debt position falls below the trigger ratio, anyone can call `siphon()` to trigger the withdrawal of enough capital from the liquidity position to return the debt position to the target ratio.
 
-This contract should be used in concert with a bot which periodicially queries `ratio()` on the debt position adapter and calls `payDebt()` on the Siphon module any time `ratio()` falls below the current `ratioTarget()`.
+This contract should be used in concert with a bot which periodicially queries `ratio()` on the debt position adapter and calls `siphon()` on the Siphon module any time `ratio()` falls below the current `ratioTarget()`.
 
-Siphon also exposes some MEV in the parity and slippage tolerance defined by the user in the liquidity adapter. Setting these variables relatively higher provides an incentive for those seeking to capture MEV to call `payDebt()` on the user's behalf, whenever `ratio()` falls below `ratioTarget()`. This could be used in concert with the bot mentioned above to add a layer of redundancy to the monitoring payment of unhealthy debt positions.
+Siphon also exposes some MEV in the parity and slippage tolerance defined by the user in the liquidity adapter. Setting these variables relatively higher provides an incentive for those seeking to capture MEV to call `siphon()` on the user's behalf, whenever `ratio()` falls below `ratioTarget()`. This could be used in concert with the bot mentioned above to add a layer of redundancy to the monitoring payment of unhealthy debt positions.
 
 ### Features
 
@@ -27,9 +27,10 @@ Siphon also exposes some MEV in the parity and slippage tolerance defined by the
 ### Flow
 
 - Deploy a debt position adapter along with a liquidity position adapter from which asset to pay down debt can be drawn.
-- Set a target collateral ratio and a trigger collateral ratio
+- Set a target collateral ratio and a trigger collateral ratio on the debt position.
 - Set parity and slippage tolerance for you liquidity position; higher means exposing more MEV.
-- Monitor `ratio()` and `ratioTrigger()` on the debt adapter and call `payDebt()` on the Siphon module whenever the former falls below the latter.
+- Connect [a tube](https://youtu.be/WqWuwZElgDg) between the debt position and the liquidity position with `connectTube()`.
+- Monitor `ratio()` and `ratioTrigger()` on the debt adapter and call `siphon()` on the Siphon module whenever the former falls below the latter.
 
 ### Development environment setup
 
