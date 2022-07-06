@@ -10,6 +10,8 @@ interface IPool {
     function getSwapFeePercentage() external view returns (uint256);
 
     function getScalingFactors() external view returns (uint256[] memory);
+
+    function totalSupply() external view returns (uint256);
 }
 
 interface IStablePool is IPool {
@@ -21,6 +23,12 @@ interface IStablePool is IPool {
             bool isUpdating,
             uint256 precision
         );
+
+    function getLastInvariant()
+        external
+        view
+        returns (uint256 lastInvariant, uint256 lastInvariantAmp);
+
 }
 
 interface IStablePhantomPool is IStablePool {
