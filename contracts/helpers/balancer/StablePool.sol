@@ -11,11 +11,8 @@ import "./Utils.sol";
 library StablePoolHelper {
     using FixedPoint for uint256;
 
-    function nominalValue(address pool) external view returns (uint256) {
-        return
-            ILinearPool(pool).getVirtualSupply().mulDown(
-                ILinearPool(pool).getRate()
-            );
+    function nominalValue(address pool) external pure returns (uint256) {
+        return 0;
     }
 
     function calcPrice(
@@ -23,6 +20,7 @@ library StablePoolHelper {
         address token1,
         address token2
     ) public view returns (uint256) {
+        // feeler, 1000 USD
         uint256 amountIn = 1000 * 10**ERC20(token1).decimals();
         uint256 amountOut = calcTokenOutGivenTokenIn(
             pool,
@@ -37,30 +35,6 @@ library StablePoolHelper {
         );
 
         return price;
-    }
-
-    function calcTokenOutGivenBptIn(
-        address pool,
-        uint256 bptAmountIn,
-        address tokenOut
-    ) external view returns (uint256) {
-        (PoolTokens memory tokens, uint256 amplification) = query(pool);
-
-        uint256 indexOut = Utils.indexOf(tokens.addresses, tokenOut);
-
-        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
-        subtractDueFeeAmounts(pool, tokens.balances);
-
-        uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
-            amplification,
-            tokens.balances,
-            indexOut,
-            bptAmountIn,
-            IPool(pool).totalSupply(),
-            IPool(pool).getSwapFeePercentage()
-        );
-
-        return Utils.downscaleDown(amountOut, tokens.scalingFactors[indexOut]);
     }
 
     function calcTokenOutGivenTokenIn(
@@ -99,65 +73,22 @@ library StablePoolHelper {
         return Utils.downscaleDown(amountOut, tokens.scalingFactors[indexOut]);
     }
 
-    function subtractDueFeeAmounts(address pool, uint256[] memory balances)
-        internal
-        view
-    {
-        uint256[] memory fees = dueFeeAmounts(pool);
-
-        for (uint256 i = 0; i < fees.length; ++i) {
-            balances[i] = FixedPoint.sub(balances[i], fees[i]);
-        }
-    }
-
-    function dueFeeAmounts(address pool)
-        private
-        view
-        returns (uint256[] memory)
-    {
-        (PoolTokens memory tokens, ) = query(pool);
-
-        uint256[] memory result = new uint256[](tokens.balances.length);
-        uint256 swapFeePercentage = IPool(pool).getSwapFeePercentage();
-        if (swapFeePercentage == 0) {
-            return result;
-        }
-
-        uint256 chosenTokenIndex = 0;
-        uint256 maxBalance = tokens.balances[0];
-        for (uint256 i = 1; i < tokens.balances.length; ++i) {
-            uint256 currentBalance = tokens.balances[i];
-            if (currentBalance > maxBalance) {
-                chosenTokenIndex = i;
-                maxBalance = currentBalance;
-            }
-        }
-
-        (uint256 lastInvariant, uint256 lastAmplification) = IStablePool(pool)
-            .getLastInvariant();
-
-        // Set the fee amount to pay in the selected token
-        result[chosenTokenIndex] = StableMath
-            ._calcDueTokenProtocolSwapFeeAmount(
-                lastAmplification,
-                tokens.balances,
-                lastInvariant,
-                chosenTokenIndex,
-                swapFeePercentage
-            );
-
-        return result;
-    }
-
     function query(address _pool)
         private
         view
         returns (PoolTokens memory tokens, uint256 amplification)
     {
         IStablePool pool = IStablePool(_pool);
-        tokens.scalingFactors = pool.getScalingFactors();
         (tokens.addresses, tokens.balances, ) = IVault(pool.getVault())
             .getPoolTokens(pool.getPoolId());
+
+        tokens.scalingFactors = new uint256[](tokens.addresses.length);
+        for (uint256 i = 0; i < tokens.addresses.length; i++) {
+            tokens.scalingFactors[i] = Utils.calcScalingFactor(
+                tokens.addresses[i]
+            );
+        }
+
         (amplification, , ) = pool.getAmplificationParameter();
     }
 

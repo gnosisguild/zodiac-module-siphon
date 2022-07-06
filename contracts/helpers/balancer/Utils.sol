@@ -113,7 +113,7 @@ library Utils {
         return tokenIndex < bptIndex ? tokenIndex : tokenIndex - 1;
     }
 
-    function calcScalingFactor(address token) private view returns (uint256) {
+    function calcScalingFactor(address token) external view returns (uint256) {
         // Tokens that don't implement the `decimals` method are not supported.
         uint256 tokenDecimals = ERC20(token).decimals();
 

@@ -28,7 +28,6 @@ interface IStablePool is IPool {
         external
         view
         returns (uint256 lastInvariant, uint256 lastInvariantAmp);
-
 }
 
 interface IStablePhantomPool is IStablePool {
