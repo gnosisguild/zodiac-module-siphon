@@ -95,21 +95,24 @@ export async function setupAdapter(avatar: Contract) {
   return adapter;
 }
 
-export async function joinPool(): Promise<void> {
-  // tokenIn: string,
-  // amountIn: BigNumber
+export async function joinPool(
+  tokenIn: string,
+  amountIn: BigNumber
+): Promise<void> {
   const { BigWhale } = await getNamedAccounts();
   const signer = hre.ethers.provider.getSigner(BigWhale);
 
-  const usdc = await hre.ethers.getContractAt("ERC20", USDC_ADDRESS);
   const vault = new ethers.Contract(VAULT_ADDRESS, vaultAbi, signer);
 
   const pool = new ethers.Contract(STABLE_POOL_ADDRESS, poolAbi, signer);
   const poolId = await pool.getPoolId();
 
   const { tokens } = await vault.getPoolTokens(poolId);
+  const tokenInIndex = tokens.indexOf(tokenIn);
+  if (tokenInIndex == -1) throw new Error("Couldn't find index in setup");
 
-  const amountsIn = [0, "20000000000", 0];
+  const amountsIn = new Array(tokens.length).fill(0);
+  amountsIn[tokenInIndex] = amountIn;
 
   const tx = await vault.connect(signer).joinPool(poolId, BigWhale, BigWhale, {
     assets: tokens,

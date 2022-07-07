@@ -37,6 +37,32 @@ library StablePoolHelper {
         return price;
     }
 
+    function calcTokenOutGivenBptIn(
+        address pool,
+        uint256 bptAmountIn,
+        address tokenOut
+    ) public view returns (uint256) {
+        (PoolTokens memory tokens, uint256 amplification) = query(pool);
+
+        uint256 indexTokenOut = Utils.indexOf(tokens.addresses, tokenOut);
+        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
+
+        uint256 amountOut = StableMath._calcTokenOutGivenExactBptIn(
+            amplification,
+            tokens.balances,
+            indexTokenOut,
+            bptAmountIn,
+            IPool(pool).totalSupply(),
+            IPool(pool).getSwapFeePercentage()
+        );
+
+        return
+            Utils.downscaleDown(
+                amountOut,
+                tokens.scalingFactors[indexTokenOut]
+            );
+    }
+
     function calcTokenOutGivenTokenIn(
         address pool,
         address tokenIn,
@@ -71,6 +97,33 @@ library StablePoolHelper {
         );
 
         return Utils.downscaleDown(amountOut, tokens.scalingFactors[indexOut]);
+    }
+
+    function calcBptInGivenTokenOut(
+        address pool,
+        address tokenOut,
+        uint256 amountOut
+    ) public view returns (uint256) {
+        (PoolTokens memory tokens, uint256 amplification) = query(pool);
+        uint256 indexTokenOut = Utils.indexOf(tokens.addresses, tokenOut);
+
+        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
+
+        uint256[] memory amountsOut = new uint256[](tokens.addresses.length);
+        amountsOut[indexTokenOut] = amountOut = Utils.upscale(
+            amountOut,
+            tokens.scalingFactors[indexTokenOut]
+        );
+
+        uint256 amountIn = StableMath._calcBptInGivenExactTokensOut(
+            amplification,
+            tokens.balances,
+            amountsOut,
+            IPool(pool).totalSupply(),
+            IPool(pool).getSwapFeePercentage()
+        );
+
+        return amountIn;
     }
 
     function query(address _pool)
