@@ -2,13 +2,9 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import hre, { deployments, getNamedAccounts } from "hardhat";
 
-import {
-  fork,
-  forkReset,
-  setup,
-  setupFundWhaleWithBPT,
-  setupFundAvatar,
-} from "./setup";
+import { fork, forkReset } from "../setup";
+
+import { setup, setupFundWhaleWithBPT, setupFundAvatar } from "./setup";
 
 describe("LP: Balancer Boosted Pool", async () => {
   describe("withdrawalInstructions", async () => {

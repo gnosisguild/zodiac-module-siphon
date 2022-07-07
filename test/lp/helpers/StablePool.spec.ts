@@ -172,10 +172,9 @@ export async function queryTokenAmountOutForTokenAmountIn(
 }
 
 async function getStablePoolHelper() {
+  const { BigWhale } = await getNamedAccounts();
+  const signer = hre.ethers.provider.getSigner(BigWhale);
+
   const deployment = await deployments.get("StablePoolHelper");
-  return new hre.ethers.Contract(
-    deployment.address,
-    deployment.abi,
-    hre.ethers.provider
-  );
+  return new hre.ethers.Contract(deployment.address, deployment.abi, signer);
 }

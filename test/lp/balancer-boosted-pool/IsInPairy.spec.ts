@@ -2,13 +2,12 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import hre, { deployments, getNamedAccounts } from "hardhat";
 
+import { fork, forkReset, fundWhaleWithStables } from "../setup";
+
 import {
-  fork,
-  forkReset,
   setup,
   setupFundWhaleWithBPT,
   setupFundAvatar,
-  setupFundWhaleWithStables,
   investInPool,
 } from "./setup";
 
@@ -34,7 +33,7 @@ describe("LP: Balancer Boosted Pool", async () => {
         } = await setup();
 
         await setupFundWhaleWithBPT();
-        await setupFundWhaleWithStables();
+        await fundWhaleWithStables();
 
         await setupFundAvatar(
           avatar,

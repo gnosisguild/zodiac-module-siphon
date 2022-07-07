@@ -1,11 +1,13 @@
 import dotenv from "dotenv";
-import { Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import hre, { ethers, getNamedAccounts } from "hardhat";
 
 import {
   DAI_ADDRESS,
   DAI_WHALE,
+  gaugeAbi,
   MAX_UINT256,
+  STABLE_POOL_ADDRESS,
   TETHER_ADDRESS,
   TETHER_WHALE,
   USDC_ADDRESS,
@@ -51,7 +53,23 @@ export async function fundWhaleWithStables(): Promise<void> {
   await usdc.connect(signer).approve(VAULT_ADDRESS, MAX_UINT256);
 }
 
-async function fundWhale(
+export async function fundWhaleWithBpt(
+  gaugeAddress: string,
+  gaugeTopHolders: string[]
+): Promise<void> {
+  const { BigWhale } = await getNamedAccounts();
+  const signer = hre.ethers.provider.getSigner(BigWhale);
+
+  for (let i = 0; i < gaugeTopHolders.length; i++) {
+    await fundWhale(gaugeAddress, gaugeTopHolders[i]);
+  }
+
+  const gauge = new hre.ethers.Contract(gaugeAddress, gaugeAbi, signer);
+  const balance: BigNumber = await gauge.balanceOf(BigWhale);
+  await gauge["withdraw(uint256)"](balance);
+}
+
+export async function fundWhale(
   tokenAddress: string,
   fromAddress: string
 ): Promise<Contract> {

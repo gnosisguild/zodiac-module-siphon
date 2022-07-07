@@ -81,8 +81,30 @@ interface IVault {
         bool toInternalBalance;
     }
 
+    struct ExitPoolRequest {
+        address[] assets;
+        uint256[] minAmountsOut;
+        bytes userData;
+        bool toInternalBalance;
+    }
+
     enum SwapKind {
         GIVEN_IN,
         GIVEN_OUT
     }
+
+    enum ExitKind {
+        EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        EXACT_BPT_IN_FOR_TOKENS_OUT,
+        BPT_IN_FOR_EXACT_TOKENS_OUT
+    }
+}
+
+interface IBalancerHelpers {
+    function queryExit(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        IVault.ExitPoolRequest memory request
+    ) external returns (uint256 bptIn, uint256[] memory amountsOut);
 }
