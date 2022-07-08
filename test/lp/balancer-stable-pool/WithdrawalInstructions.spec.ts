@@ -1,12 +1,24 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import hre, { deployments, getNamedAccounts } from "hardhat";
+import hre, { deployments } from "hardhat";
 
-import { fork, forkReset } from "../setup";
+import {
+  gaugeAbi,
+  poolAbi,
+  STABLE_GAUGE_ADDRESS,
+  STABLE_GAUGE_TOP_HOLDERS,
+  STABLE_POOL_ADDRESS,
+} from "../constants";
+import {
+  fork,
+  forkReset,
+  fundWhaleWithBpt,
+  fundWhaleWithStables,
+} from "../setup";
 
-import { setup, setupFundWhaleWithBPT, setupFundAvatar } from "./setup";
+import { setup, fundAvatar } from "./setup";
 
-describe("LP: Balancer Boosted Pool", async () => {
+describe("LP: Balancer Stable Pool", async () => {
   describe("withdrawalInstructions", async () => {
     let baseSetup: any;
 
@@ -16,18 +28,43 @@ describe("LP: Balancer Boosted Pool", async () => {
       baseSetup = deployments.createFixture(async ({ deployments }) => {
         await deployments.fixture();
 
-        const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
+        const { avatar, adapter, vault, dai, tether, usdc, whaleSigner } =
           await setup();
 
-        await setupFundWhaleWithBPT();
+        const gauge = new hre.ethers.Contract(
+          STABLE_GAUGE_ADDRESS,
+          gaugeAbi,
+          hre.ethers.provider
+        );
 
-        await setupFundAvatar(
+        const pool = new hre.ethers.Contract(
+          STABLE_POOL_ADDRESS,
+          poolAbi,
+          hre.ethers.provider
+        );
+
+        await fundWhaleWithStables();
+        await fundWhaleWithBpt(gauge.address, STABLE_GAUGE_TOP_HOLDERS);
+
+        await fundAvatar(
           avatar,
+          gauge,
+          pool,
           BigNumber.from("1000000000000000000000000"),
           BigNumber.from("1000000000000000000000000")
         );
 
-        return { avatar, adapter, pool, gauge, dai, boostedPoolHelper };
+        return {
+          avatar,
+          adapter,
+          pool,
+          gauge,
+          vault,
+          dai,
+          tether,
+          usdc,
+          whaleSigner,
+        };
       });
     });
 
@@ -40,7 +77,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2011692050301141087971936");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -53,8 +90,8 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       expect(await adapter.balance()).to.equal(adapterLiquidity);
 
-      // requesting 10x more than available
-      const requestedAmountOut = adapterLiquidity.mul(10);
+      // requesting 2x more than available
+      const requestedAmountOut = adapterLiquidity.mul(2);
 
       const instructions = await adapter.withdrawalInstructions(
         requestedAmountOut
@@ -105,7 +142,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2011692050301141087971936");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -170,7 +207,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2011692050301141087971936");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -233,7 +270,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2011692050301141087971936");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -289,133 +326,6 @@ describe("LP: Balancer Boosted Pool", async () => {
         (await pool.balanceOf(avatar.address)).gt(bptUnusedLower) &&
           (await pool.balanceOf(avatar.address)).lt(bptUnusedUpper)
       ).to.be.true;
-    });
-
-    it("Requesting more DAI than available, and not enough BPT to cover", async () => {
-      const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
-        await baseSetup();
-
-      const avatarBptBalance = BigNumber.from("1000000000000000000000000");
-      const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
-      const daiBalanceInPool = BigNumber.from("6418189433949017901195296");
-
-      // Avatar has zero DAI
-      expect(await dai.balanceOf(avatar.address)).to.equal(0);
-
-      expect(await pool.balanceOf(avatar.address)).to.equal(avatarBptBalance);
-
-      expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
-      );
-
-      expect(await adapter.balance()).to.equal(adapterLiquidity);
-
-      expect(
-        await boostedPoolHelper.calcMaxStableOut(pool.address, dai.address)
-      ).to.equal(daiBalanceInPool);
-
-      const instructions = await adapter.withdrawalInstructions(
-        daiBalanceInPool.mul(2)
-      );
-
-      expect(instructions).to.have.length(2);
-
-      await avatar.exec(
-        instructions[0].to,
-        instructions[0].value.toString(),
-        instructions[0].data
-      );
-
-      await avatar.exec(
-        instructions[1].to,
-        instructions[1].value.toString(),
-        instructions[1].data
-      );
-
-      // Expect BPT and StakedBPT to be drained
-      await expect(await pool.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0")
-      );
-
-      await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0")
-      );
-
-      const slippage = await adapter.slippage();
-      const outLiquidityUpper = adapterLiquidity.add(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
-      const outLiquidityLower = adapterLiquidity.sub(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
-
-      const actualAmountOut = await dai.balanceOf(avatar.address);
-
-      // expect the amountOut to be around what was forecasted
-      expect(
-        actualAmountOut.gt(outLiquidityLower) &&
-          actualAmountOut.lt(outLiquidityUpper)
-      ).to.be.true;
-    });
-
-    it("Requesting more DAI than available, as a mega whale, draining LinearPool", async () => {
-      const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
-        await baseSetup();
-
-      const { BigWhale } = await getNamedAccounts();
-      const signer = hre.ethers.provider.getSigner(BigWhale);
-
-      const avatarBptBalance = BigNumber.from("1000000000000000000000000");
-      const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const daiBalanceInPool = BigNumber.from("6418189433949017901195296");
-      const requestedAmountOut = BigNumber.from("9000000000000000000000000");
-
-      const whaleBptBalance = await pool.balanceOf(BigWhale);
-      pool.connect(signer).transfer(avatar.address, whaleBptBalance);
-
-      // Avatar has zero DAI
-      expect(await dai.balanceOf(avatar.address)).to.equal(0);
-
-      expect(await pool.balanceOf(avatar.address)).to.equal(
-        avatarBptBalance.add(whaleBptBalance)
-      );
-
-      expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
-      );
-
-      expect(
-        await boostedPoolHelper.calcMaxStableOut(pool.address, dai.address)
-      ).to.equal(daiBalanceInPool);
-
-      // request for more than actually lives in the linearPool.
-      // Avatar has around 80% of the pool tokens, so nominally
-      // enough for the requested amount
-      const instructions = await adapter.withdrawalInstructions(
-        requestedAmountOut
-      );
-
-      // no need to unstake
-      expect(instructions).to.have.length(1);
-
-      await avatar.exec(
-        instructions[0].to,
-        instructions[0].value.toString(),
-        instructions[0].data
-      );
-
-      // Expect BPT to not be drained
-      expect((await pool.balanceOf(avatar.address)).gt(0)).to.be.true;
-      // we expected staked BPT to remain unchanged
-      expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
-      );
-
-      const actualAmountOut = await dai.balanceOf(avatar.address);
-
-      // expect the amountOut to be exactly what was requested
-      expect(actualAmountOut).to.equal(daiBalanceInPool);
     });
   });
 });

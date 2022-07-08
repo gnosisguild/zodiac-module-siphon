@@ -22,6 +22,15 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     libraries,
     log: true,
   });
+  await deploy("StablePoolHelper", {
+    from: deployer,
+    args: [],
+    libraries: {
+      ...libraries,
+      Utils: txUtils.address,
+    },
+    log: true,
+  });
   const txLinearPool = await deploy("LinearPoolHelper", {
     from: deployer,
     args: [],

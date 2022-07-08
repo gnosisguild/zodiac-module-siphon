@@ -10,6 +10,8 @@ interface IPool {
     function getSwapFeePercentage() external view returns (uint256);
 
     function getScalingFactors() external view returns (uint256[] memory);
+
+    function totalSupply() external view returns (uint256);
 }
 
 interface IStablePool is IPool {
@@ -21,6 +23,11 @@ interface IStablePool is IPool {
             bool isUpdating,
             uint256 precision
         );
+
+    function getLastInvariant()
+        external
+        view
+        returns (uint256 lastInvariant, uint256 lastInvariantAmp);
 }
 
 interface IStablePhantomPool is IStablePool {
@@ -74,8 +81,30 @@ interface IVault {
         bool toInternalBalance;
     }
 
+    struct ExitPoolRequest {
+        address[] assets;
+        uint256[] minAmountsOut;
+        bytes userData;
+        bool toInternalBalance;
+    }
+
     enum SwapKind {
         GIVEN_IN,
         GIVEN_OUT
     }
+
+    enum ExitKind {
+        EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        EXACT_BPT_IN_FOR_TOKENS_OUT,
+        BPT_IN_FOR_EXACT_TOKENS_OUT
+    }
+}
+
+interface IBalancerHelpers {
+    function queryExit(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        IVault.ExitPoolRequest memory request
+    ) external returns (uint256 bptIn, uint256[] memory amountsOut);
 }
