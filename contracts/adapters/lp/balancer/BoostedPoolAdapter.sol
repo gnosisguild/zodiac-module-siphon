@@ -49,29 +49,12 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         return delta < parityTolerance;
     }
 
-    function balanceNominal(uint256 bptAmount)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        uint256 ratio = bptAmount.divDown(
-            IStablePhantomPool(pool).getVirtualSupply()
-        );
-        uint256 nominalValue = BoostedPoolHelper.nominalValue(pool);
-        return ratio.mulDown(nominalValue);
-    }
-
-    function balanceEffective(uint256 bptAmount)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function balance() public view override returns (uint256) {
+        (uint256 unstakedBpt, uint256 stakedBpt) = bptBalances();
         return
             BoostedPoolHelper.calcStableOutGivenBptIn(
                 pool,
-                bptAmount,
+                unstakedBpt + stakedBpt,
                 tokenOut
             );
     }
@@ -241,5 +224,13 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         );
 
         return (price1, price2);
+    }
+
+    function _balanceNominal(uint256 bptAmount) public view returns (uint256) {
+        uint256 ratio = bptAmount.divDown(
+            IStablePhantomPool(pool).getVirtualSupply()
+        );
+        uint256 nominalValue = BoostedPoolHelper.nominalValue(pool);
+        return ratio.mulDown(nominalValue);
     }
 }

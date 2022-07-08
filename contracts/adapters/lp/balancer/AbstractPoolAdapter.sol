@@ -46,9 +46,7 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return tokenOut;
     }
 
-    function balance() external view override returns (uint256) {
-        return balanceEffective();
-    }
+    function balance() public view override virtual returns (uint256);
 
     function canWithdraw() external view override returns (bool) {
         // we should make sure the pool has at least 1M nomimal value?
@@ -84,28 +82,6 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
     }
 
     function isInParity() public view virtual returns (bool);
-
-    function balanceNominal() public view returns (uint256) {
-        (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
-        return balanceNominal(unstakedBalance + stakedBalance);
-    }
-
-    function balanceNominal(uint256 bptAmount)
-        public
-        view
-        virtual
-        returns (uint256);
-
-    function balanceEffective() public view returns (uint256) {
-        (uint256 unstakedBalance, uint256 stakedBalance) = bptBalances();
-        return balanceEffective(unstakedBalance + stakedBalance);
-    }
-
-    function balanceEffective(uint256 bptAmount)
-        public
-        view
-        virtual
-        returns (uint256);
 
     function bptBalances()
         public

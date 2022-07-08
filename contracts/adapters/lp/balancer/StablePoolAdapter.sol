@@ -48,24 +48,14 @@ contract StablePoolAdapter is AbstractPoolAdapter {
         return delta < parityTolerance;
     }
 
-    function balanceNominal(uint256 bptAmount)
-        public
-        view
-        override
-        returns (uint256)
-    {
-        // TODO
-        return 0;
-    }
-
-    function balanceEffective(uint256 bptAmount)
-        public
-        view
-        override
-        returns (uint256)
-    {
+    function balance() public view override returns (uint256) {
+        (uint256 stakedBpt, uint256 unstakedBpt) = bptBalances();
         return
-            StablePoolHelper.calcTokenOutGivenBptIn(pool, bptAmount, tokenOut);
+            StablePoolHelper.calcTokenOutGivenBptIn(
+                pool,
+                stakedBpt + unstakedBpt,
+                tokenOut
+            );
     }
 
     function encodeExit(
