@@ -30,11 +30,11 @@ contract Siphon is Module, MultisendEncoder {
 
     error DebtPositionIsHealthy();
 
-    error UnstableLiquiditySource();
-
     error NoLiquidityInvested();
 
     error NoLiquidityWithdrawn();
+
+    error WithdrawalBlocked();
 
     error WithdrawalFailed();
 
@@ -121,7 +121,7 @@ contract Siphon is Module, MultisendEncoder {
         }
 
         if (!lp.canWithdraw()) {
-            revert UnstableLiquiditySource();
+            revert WithdrawalBlocked();
         }
 
         uint256 prevBalance = IERC20(lp.asset()).balanceOf(avatar);
