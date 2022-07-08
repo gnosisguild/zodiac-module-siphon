@@ -8,6 +8,10 @@ import "../../../ILiquidityPosition.sol";
 import "../../../helpers/balancer/Interop.sol";
 
 abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
+    uint256 private constant DEFAULT_PARITY_TOLERANCE = 20;
+    uint256 private constant DEFAULT_SLIPPAGE = 50;
+    uint256 private constant DEFAULT_BLOCK_AGE = 5;
+
     address public investor;
     address public vault;
     address public pool;
@@ -15,6 +19,7 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
     address public tokenOut;
 
     uint256 public parityTolerance;
+    uint256 public minBlockAge;
     uint256 public slippage;
 
     function setUp(bytes memory initParams) public override initializer {
@@ -37,8 +42,9 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
         tokenOut = _tokenOut;
 
-        parityTolerance = basisPoints(20);
-        slippage = basisPoints(50);
+        parityTolerance = basisPoints(DEFAULT_PARITY_TOLERANCE);
+        slippage = basisPoints(DEFAULT_SLIPPAGE);
+        minBlockAge = DEFAULT_BLOCK_AGE;
         _transferOwnership(_owner);
     }
 
@@ -46,11 +52,11 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return tokenOut;
     }
 
-    function balance() public view override virtual returns (uint256);
+    function balance() public view virtual override returns (uint256);
 
     function canWithdraw() external view override returns (bool) {
         // we should make sure the pool has at least 1M nomimal value?
-        return isInParity();
+        return isOldEnough() && isInParity();
     }
 
     function withdrawalInstructions(uint256 requestedAmountOut)
@@ -83,13 +89,14 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function isInParity() public view virtual returns (bool);
 
-    function bptBalances()
-        public
-        view
-        returns (uint256 unstakedBalance, uint256 stakedBalance)
-    {
-        unstakedBalance = IERC20(pool).balanceOf(investor);
-        stakedBalance = IERC20(gauge).balanceOf(investor);
+    function isOldEnough() public view returns (bool) {
+        (, , uint256 lastModifiedBlock) = IVault(vault).getPoolTokens(
+            IPool(pool).getPoolId()
+        );
+
+        uint256 age = block.number - lastModifiedBlock;
+
+        return age >= minBlockAge;
     }
 
     function encodeUnstake(uint256 amount)
@@ -123,8 +130,21 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
             uint256 amountOut
         );
 
+    function bptBalances()
+        public
+        view
+        returns (uint256 unstakedBalance, uint256 stakedBalance)
+    {
+        unstakedBalance = IERC20(pool).balanceOf(investor);
+        stakedBalance = IERC20(gauge).balanceOf(investor);
+    }
+
     function setParityTolerance(uint256 bips) external onlyOwner {
         parityTolerance = basisPoints(bips);
+    }
+
+    function setMinBlockAge(uint256 _minBlockAge) external onlyOwner {
+        minBlockAge = _minBlockAge;
     }
 
     function setSlippage(uint256 bips) external onlyOwner {
