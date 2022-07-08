@@ -4,7 +4,6 @@ import { getAddress } from "ethers/lib/utils";
 import hre, { deployments, getNamedAccounts } from "hardhat";
 
 import { joinPool } from "../balancer-stable-pool/setup";
-
 import {
   DAI_ADDRESS,
   helpersAbi,
@@ -18,17 +17,10 @@ import {
 } from "../constants";
 import { fork, forkReset, fundWhaleWithStables } from "../setup";
 
-// enum ExitKind {
-//   EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
-//   EXACT_BPT_IN_FOR_TOKENS_OUT,
-//   BPT_IN_FOR_EXACT_TOKENS_OUT
-// }
-
 const EXACT_BPT_IN_FOR_ONE_TOKEN_OUT = 0;
-const EXACT_BPT_IN_FOR_TOKENS_OUT = 1;
 const BPT_IN_FOR_EXACT_TOKENS_OUT = 2;
 
-describe.only("LP: Balancer Stable Pool Helper", async () => {
+describe("LP: Balancer Stable Pool Helper", async () => {
   let baseSetup: any;
 
   before(async () => {

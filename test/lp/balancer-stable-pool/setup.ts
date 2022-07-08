@@ -3,7 +3,7 @@ import hre, { ethers, getNamedAccounts } from "hardhat";
 
 import {
   DAI_ADDRESS,
-  gaugeAbi,
+  MAX_UINT256,
   poolAbi,
   STABLE_GAUGE_ADDRESS,
   STABLE_POOL_ADDRESS,
@@ -12,21 +12,6 @@ import {
   vaultAbi,
   VAULT_ADDRESS,
 } from "../constants";
-
-export async function setupFundAvatar(
-  avatar: Contract,
-  gaugeAmount: BigNumber,
-  bptAmount: BigNumber
-): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
-
-  const gauge = await hre.ethers.getContractAt("ERC20", STABLE_GAUGE_ADDRESS);
-  const bpt = await hre.ethers.getContractAt("ERC20", STABLE_POOL_ADDRESS);
-
-  await gauge.connect(signer).transfer(avatar.address, gaugeAmount);
-  await bpt.connect(signer).transfer(avatar.address, bptAmount);
-}
 
 export async function setup() {
   const { BigWhale } = await getNamedAccounts();
@@ -37,17 +22,6 @@ export async function setup() {
   const dai = await hre.ethers.getContractAt("ERC20", DAI_ADDRESS);
   const usdc = await hre.ethers.getContractAt("ERC20", USDC_ADDRESS);
   const tether = await hre.ethers.getContractAt("ERC20", TETHER_ADDRESS);
-
-  const pool = new hre.ethers.Contract(
-    STABLE_POOL_ADDRESS,
-    poolAbi,
-    hre.ethers.provider
-  );
-  const gauge = new hre.ethers.Contract(
-    STABLE_GAUGE_ADDRESS,
-    gaugeAbi,
-    hre.ethers.provider
-  );
 
   const vault = new hre.ethers.Contract(
     VAULT_ADDRESS,
@@ -60,8 +34,6 @@ export async function setup() {
   return {
     avatar,
     adapter,
-    pool,
-    gauge,
     vault,
     dai,
     tether,
@@ -93,6 +65,22 @@ export async function setupAdapter(avatar: Contract) {
   );
 
   return adapter;
+}
+
+export async function fundAvatar(
+  avatar: Contract,
+  gauge: Contract,
+  pool: Contract,
+  gaugeAmount: BigNumber,
+  bptAmount: BigNumber
+): Promise<void> {
+  const { BigWhale } = await getNamedAccounts();
+  const signer = hre.ethers.provider.getSigner(BigWhale);
+
+  await pool.connect(signer).transfer(avatar.address, bptAmount);
+  await pool.connect(signer).approve(gauge.address, MAX_UINT256);
+  await gauge.connect(signer)["deposit(uint256)"](gaugeAmount);
+  await gauge.connect(signer).transfer(avatar.address, gaugeAmount);
 }
 
 export async function joinPool(

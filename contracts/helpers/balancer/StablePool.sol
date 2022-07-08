@@ -11,10 +11,6 @@ import "./Utils.sol";
 library StablePoolHelper {
     using FixedPoint for uint256;
 
-    function nominalValue(address pool) external pure returns (uint256) {
-        return 0;
-    }
-
     function calcPrice(
         address pool,
         address token1,

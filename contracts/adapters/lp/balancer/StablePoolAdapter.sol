@@ -10,9 +10,6 @@ import "../../../helpers/balancer/StablePool.sol";
 contract StablePoolAdapter is AbstractPoolAdapter {
     using FixedPoint for uint256;
 
-    address private constant HELPERS =
-        0x5aDDCCa35b7A0D07C74063c48700C8590E87864E;
-
     constructor(
         address _owner,
         address _investor,
@@ -37,7 +34,6 @@ contract StablePoolAdapter is AbstractPoolAdapter {
 
         uint256 delta = 0;
         for (uint256 i = 1; i < tokens.length; i++) {
-            // should we use calcPriceIndirect?
             uint256 price = StablePoolHelper.calcPrice(
                 pool,
                 tokens[0],
@@ -68,8 +64,8 @@ contract StablePoolAdapter is AbstractPoolAdapter {
         override
         returns (uint256)
     {
-        // TODO
-        return 0;
+        return
+            StablePoolHelper.calcTokenOutGivenBptIn(pool, bptAmount, tokenOut);
     }
 
     function encodeExit(
@@ -77,12 +73,38 @@ contract StablePoolAdapter is AbstractPoolAdapter {
         uint256 amountIn,
         uint256 amountOut
     ) internal view override returns (Transaction memory) {
-        // TODO
+        bytes32 poolId = IPool(pool).getPoolId();
+        (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
+        uint256 tokenOutIndex = Utils.indexOf(tokens, tokenOut);
+        uint256[] memory amountsOut = new uint256[](tokens.length);
+        amountsOut[tokenOutIndex] = amountOut;
+
+        bytes memory userData;
+        if (
+            IVault.ExitKind(kind) ==
+            IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT
+        ) {
+            userData = abi.encode(kind, amountIn, tokenOutIndex);
+        } else {
+            userData = abi.encode(kind, amountsOut, amountIn);
+        }
+
         return
             Transaction({
                 to: vault,
                 value: 0,
-                data: hex"",
+                data: abi.encodeWithSelector(
+                    0x8bdb3913,
+                    poolId,
+                    investor,
+                    investor,
+                    IVault.ExitPoolRequest({
+                        assets: tokens,
+                        minAmountsOut: amountsOut,
+                        userData: userData,
+                        toInternalBalance: false
+                    })
+                ),
                 operation: Enum.Operation.Call
             });
     }
@@ -97,89 +119,39 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             uint256 amountOut
         )
     {
-        // TODO
-        kind = 0;
-        amountIn = 0;
-        amountOut = 0;
-    }
+        (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
-    // Computing from BoostedPool Bpt
-    // To -> LinearPool Bpt
-    // To -> LinearPool MainToken
-    function calcTokenOutGivenBptIn(uint256 amountIn) public returns (uint256) {
-        (
-            bytes32 poolId,
-            address[] memory tokens,
-            uint256 tokenOutIndex
-        ) = query();
+        uint256 amountInAvailable = unstakedBPT + stakedBPT;
+        uint256 amountInGivenOut = StablePoolHelper.calcBptInGivenTokenOut(
+            pool,
+            tokenOut,
+            requestedAmountOut
+        );
 
-        (, uint256[] memory amountsOut) = IBalancerHelpers(HELPERS).queryExit(
-            poolId,
-            investor,
-            investor,
-            IVault.ExitPoolRequest({
-                assets: tokens,
-                minAmountsOut: new uint256[](0),
-                userData: abi.encode(
-                    IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+        bool isFullExit = amountInGivenOut >
+            FixedPoint.mulDown(
+                amountInAvailable,
+                FixedPoint.ONE - (slippage + slippage)
+            );
+
+        if (isFullExit) {
+            kind = uint8(IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT);
+            amountIn = unstakedBPT + stakedBPT;
+            amountOut = FixedPoint.mulDown(
+                StablePoolHelper.calcTokenOutGivenBptIn(
+                    pool,
                     amountIn,
-                    tokenOutIndex
+                    tokenOut
                 ),
-                toInternalBalance: false
-            })
-        );
-
-        return amountsOut[tokenOutIndex];
-    }
-
-    function calcBptInGivenTokenOut(uint256 amountOut)
-        public
-        returns (uint256)
-    {
-        (
-            bytes32 poolId,
-            address[] memory tokens,
-            uint256 tokenOutIndex
-        ) = query();
-
-        uint256[] memory amountsOut = new uint256[](tokens.length);
-        amountsOut[tokenOutIndex] = amountOut;
-
-        // Custom Exit
-        // userData ABI
-        // ['uint256', 'uint256[]', 'uint256']
-        // userData
-        // [BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, maxBPTAmountIn]
-        (uint256 bptAmountIn, ) = IBalancerHelpers(HELPERS).queryExit(
-            poolId,
-            investor,
-            investor,
-            IVault.ExitPoolRequest({
-                assets: tokens,
-                minAmountsOut: amountsOut,
-                userData: abi.encode(
-                    IVault.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT,
-                    amountsOut,
-                    uint256(2**256 - 1)
-                ),
-                toInternalBalance: false
-            })
-        );
-
-        return bptAmountIn;
-    }
-
-    function query()
-        private
-        view
-        returns (
-            bytes32 poolId,
-            address[] memory tokens,
-            uint256 tokenOutIndex
-        )
-    {
-        poolId = IPool(pool).getPoolId();
-        (tokens, , ) = IVault(IPool(pool).getVault()).getPoolTokens(poolId);
-        tokenOutIndex = Utils.indexOf(tokens, tokenOut);
+                FixedPoint.ONE - slippage
+            );
+        } else {
+            kind = uint8(IVault.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT);
+            amountIn = FixedPoint.mulDown(
+                amountInGivenOut,
+                FixedPoint.ONE + slippage
+            );
+            amountOut = requestedAmountOut;
+        }
     }
 }

@@ -118,6 +118,8 @@ export const poolAbi = [
   "function totalSupply() view returns (uint256)",
   "function transfer(address recipient, uint256 amount) returns (bool)",
   "function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
+  "function approve(address _spender, uint256 _value) returns (bool)",
+  "function permit(address _owner, address _spender, uint256 _value, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) returns (bool)",
 ];
 
 export const helpersAbi = [
