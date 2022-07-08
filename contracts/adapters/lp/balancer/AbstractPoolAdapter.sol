@@ -8,19 +8,15 @@ import "../../../ILiquidityPosition.sol";
 import "../../../helpers/balancer/Interop.sol";
 
 abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
-    uint256 private constant DEFAULT_PARITY_TOLERANCE = 20;
-    uint256 private constant DEFAULT_SLIPPAGE = 50;
-    uint256 private constant DEFAULT_BLOCK_AGE = 5;
-
     address public investor;
     address public vault;
     address public pool;
     address public gauge;
     address public tokenOut;
 
-    uint256 public parityTolerance;
-    uint256 public minBlockAge;
-    uint256 public slippage;
+    uint256 public parityTolerance = basisPoints(20); // default to 20 basis points.
+    uint256 public minBlockAge = 5; // default to 5 blocks.
+    uint256 public slippage = basisPoints(50); // default to 50 basis points.
 
     function setUp(bytes memory initParams) public override initializer {
         (
@@ -42,9 +38,6 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
         tokenOut = _tokenOut;
 
-        parityTolerance = basisPoints(DEFAULT_PARITY_TOLERANCE);
-        slippage = basisPoints(DEFAULT_SLIPPAGE);
-        minBlockAge = DEFAULT_BLOCK_AGE;
         _transferOwnership(_owner);
     }
 
