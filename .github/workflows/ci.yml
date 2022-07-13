@@ -16,7 +16,7 @@ jobs:
       - run: yarn
       - run: yarn build
       - run: yarn test
-        with:
+        env:
           ALCHEMY_KEY: ${{ secrets.ALCHEMY_KEY }}
       - run: yarn coverage
       - name: Coveralls
