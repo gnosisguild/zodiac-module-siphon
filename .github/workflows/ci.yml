@@ -4,8 +4,6 @@ on: [push]
 jobs:
   tests:
     runs-on: ubuntu-latest
-    env:
-      - ALCHEMY_KEY: { { secret.ALCHEMY_KEY } }
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
@@ -22,6 +20,7 @@ jobs:
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
+          ALCHEMY_KEY: ${{ secret.ALCHEMY_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: packages/evm/coverage/lcov.info
           base-path: packages/evm
