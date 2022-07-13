@@ -1,7 +1,6 @@
 {
   "name": "zodiac-module-siphon",
-  "version": "1.0.0",
-  "description": "TODO - A Zodiac modifier that allows assists the process of debt repayment, in collateralized debt positions",
+  "description": "A Zodiac module that enables permissionless repayment of debt in debt positions from capital held in liquidity positions.",
   "directories": {
     "test": "test"
   },
