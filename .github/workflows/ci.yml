@@ -20,7 +20,7 @@ jobs:
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
-          ALCHEMY_KEY: ${{ secret.ALCHEMY_KEY }}
+          ALCHEMY_KEY: ${{ secrets.ALCHEMY_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: packages/evm/coverage/lcov.info
           base-path: packages/evm
