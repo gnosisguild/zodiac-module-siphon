@@ -1,4 +1,4 @@
-name: build
+name: Build
 on: [push]
 
 jobs:
@@ -15,15 +15,8 @@ jobs:
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}
       - run: yarn
       - run: yarn build
-      - run: yarn test
-        env:
-          ALCHEMY_KEY: ${{ secrets.ALCHEMY_KEY }}
       - run: yarn coverage
-        env:
-          ALCHEMY_KEY: ${{ secrets.ALCHEMY_KEY }}
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: packages/evm/coverage/lcov.info
-          base-path: packages/evm
