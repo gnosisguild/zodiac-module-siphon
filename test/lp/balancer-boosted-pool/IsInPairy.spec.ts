@@ -18,7 +18,7 @@ export const BOOSTED_GAUGE_TOP_HOLDERS = [
   "0x98bea99727b297f5eca448d1640075f349c08547",
 ];
 
-describe.only("LP: Balancer Boosted Pool", async () => {
+describe("LP: Balancer Boosted Pool", async () => {
   describe("isInParity", async () => {
     let baseSetup: any;
 

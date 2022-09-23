@@ -4,14 +4,24 @@ import hre, { deployments, getNamedAccounts } from "hardhat";
 
 import { fork, forkReset } from "../setup";
 
-import { setup, setupFundWhaleWithBPT, setupFundAvatar } from "./setup";
+import { setup, setupFundWhale, setupFundAvatar } from "./setup";
+
+export const BOOSTED_GAUGE_TOP_HOLDERS = [
+  "0x995a09ed0b24ee13fbfcfbe60cad2fb6281b479f",
+  "0xb1ff8bf9c3a55877b5ee38e769e7a78cd000848e",
+  "0x44e5f536429363dd2a20ce31e3666c300233d151",
+  "0x81fa0f35b54790f78e76c74d05bd6d95632c030b",
+  "0x3a3ee61f7c6e1994a2001762250a5e17b2061b6d",
+  "0x8d8f55c99971b9e69967a406419ed815ee63d3cd",
+  "0x98bea99727b297f5eca448d1640075f349c08547",
+];
 
 describe("LP: Balancer Boosted Pool", async () => {
   describe("withdrawalInstructions", async () => {
     let baseSetup: any;
 
     before(async () => {
-      await fork(15012865);
+      await fork(15582929);
 
       baseSetup = deployments.createFixture(async ({ deployments }) => {
         await deployments.fixture();
@@ -19,7 +29,7 @@ describe("LP: Balancer Boosted Pool", async () => {
         const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
           await setup();
 
-        await setupFundWhaleWithBPT();
+        await setupFundWhale(BOOSTED_GAUGE_TOP_HOLDERS);
 
         await setupFundAvatar(
           avatar,
@@ -40,7 +50,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -105,7 +115,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -170,7 +180,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -233,7 +243,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
+      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -297,8 +307,8 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2023750179237852110281451");
-      const daiBalanceInPool = BigNumber.from("6418189433949017901195296");
+      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
+      const daiBalanceInPool = BigNumber.from("7587123402631046351019170");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -368,7 +378,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const daiBalanceInPool = BigNumber.from("6418189433949017901195296");
+      const daiBalanceInPool = BigNumber.from("7587123402631046351019170");
       const requestedAmountOut = BigNumber.from("9000000000000000000000000");
 
       const whaleBptBalance = await pool.balanceOf(BigWhale);
