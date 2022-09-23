@@ -3,7 +3,7 @@ import { getAddress } from "ethers/lib/utils";
 export const USDC_ADDRESS = getAddress(
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 );
-export const USDC_WHALE = "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503";
+export const USDC_WHALE = "0x55fe002aeff02f77364de339a1292923a15844b8";
 
 export const DAI_ADDRESS = getAddress(
   "0x6B175474E89094C44Da98b954EedeAC495271d0F"
@@ -127,4 +127,54 @@ export const helpersAbi = [
   "function queryExit(bytes32 poolId, address sender, address recipient, tuple(address[] assets, uint256[] minAmountsOut, bytes userData, bool toInternalBalance) request) view returns (uint256 bptIn, uint256[] amountsOut)",
   "function queryJoin(bytes32 poolId, address sender, address recipient, tuple(address[] assets, uint256[] maxAmountsIn, bytes userData, bool fromInternalBalance) request) view returns (uint256 bptOut, uint256[] amountsIn)",
   "function vault() view returns (address)",
+];
+
+export const linearPoolAbi = [
+  "constructor(address vault, string name, string symbol, address mainToken, address wrappedToken, uint256 upperTarget, uint256 swapFeePercentage, uint256 pauseWindowDuration, uint256 bufferPeriodDuration, address owner)",
+  "event Approval(address indexed owner, address indexed spender, uint256 value)",
+  "event PausedStateChanged(bool paused)",
+  "event SwapFeePercentageChanged(uint256 swapFeePercentage)",
+  "event TargetsSet(address indexed token, uint256 lowerTarget, uint256 upperTarget)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "function DOMAIN_SEPARATOR() view returns (bytes32)",
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function decreaseAllowance(address spender, uint256 amount) returns (bool)",
+  "function getActionId(bytes4 selector) view returns (bytes32)",
+  "function getAuthorizer() view returns (address)",
+  "function getBptIndex() view returns (uint256)",
+  "function getMainIndex() view returns (uint256)",
+  "function getMainToken() view returns (address)",
+  "function getOwner() view returns (address)",
+  "function getPausedState() view returns (bool paused, uint256 pauseWindowEndTime, uint256 bufferPeriodEndTime)",
+  "function getPoolId() view returns (bytes32)",
+  "function getRate() view returns (uint256)",
+  "function getScalingFactors() view returns (uint256[])",
+  "function getSwapFeePercentage() view returns (uint256)",
+  "function getTargets() view returns (uint256 lowerTarget, uint256 upperTarget)",
+  "function getVault() view returns (address)",
+  "function getVirtualSupply() view returns (uint256)",
+  "function getWrappedIndex() view returns (uint256)",
+  "function getWrappedToken() view returns (address)",
+  "function getWrappedTokenRate() view returns (uint256)",
+  "function increaseAllowance(address spender, uint256 addedValue) returns (bool)",
+  "function initialize()",
+  "function name() view returns (string)",
+  "function nonces(address owner) view returns (uint256)",
+  "function onExitPool(bytes32 poolId, address sender, address recipient, uint256[] balances, uint256 lastChangeBlock, uint256 protocolSwapFeePercentage, bytes userData) returns (uint256[], uint256[])",
+  "function onJoinPool(bytes32 poolId, address sender, address recipient, uint256[] balances, uint256 lastChangeBlock, uint256 protocolSwapFeePercentage, bytes userData) returns (uint256[], uint256[])",
+  "function onSwap(tuple(uint8 kind, address tokenIn, address tokenOut, uint256 amount, bytes32 poolId, uint256 lastChangeBlock, address from, address to, bytes userData) request, uint256[] balances, uint256 indexIn, uint256 indexOut) view returns (uint256)",
+  "function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)",
+  "function queryExit(bytes32 poolId, address sender, address recipient, uint256[] balances, uint256 lastChangeBlock, uint256 protocolSwapFeePercentage, bytes userData) returns (uint256 bptIn, uint256[] amountsOut)",
+  "function queryJoin(bytes32 poolId, address sender, address recipient, uint256[] balances, uint256 lastChangeBlock, uint256 protocolSwapFeePercentage, bytes userData) returns (uint256 bptOut, uint256[] amountsIn)",
+  "function setAssetManagerPoolConfig(address token, bytes poolConfig)",
+  "function setPaused(bool paused)",
+  "function setSwapFeePercentage(uint256 swapFeePercentage)",
+  "function setTargets(uint256 newLowerTarget, uint256 newUpperTarget)",
+  "function symbol() view returns (string)",
+  "function totalSupply() view returns (uint256)",
+  "function transfer(address recipient, uint256 amount) returns (bool)",
+  "function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
 ];

@@ -34,7 +34,6 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
 
         uint256 delta = 0;
         for (uint256 i = 1; i < stableTokens.length; i++) {
-            // should we use calcPriceIndirect?
             uint256 price = BoostedPoolHelper.calcPrice(
                 pool,
                 stableTokens[0],

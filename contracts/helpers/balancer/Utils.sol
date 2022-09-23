@@ -23,7 +23,7 @@ library Utils {
     }
 
     function subtractSwapFee(address pool, uint256 amount)
-        public
+        external
         view
         returns (uint256)
     {
@@ -49,7 +49,7 @@ library Utils {
     }
 
     function inferAndUpscale(uint256 amount, address token)
-        external
+        public
         view
         returns (uint256)
     {
@@ -58,6 +58,19 @@ library Utils {
             10**Math.sub(18, ERC20(token).decimals());
 
         return FixedPoint.mulDown(amount, scalingFactor);
+    }
+
+    function price(
+        address token1,
+        uint256 amount1,
+        address token2,
+        uint256 amount2
+    ) public view returns (uint256) {
+        return
+            FixedPoint.divDown(
+                inferAndUpscale(amount2, token2),
+                inferAndUpscale(amount1, token1)
+            );
     }
 
     function downscaleUpArray(

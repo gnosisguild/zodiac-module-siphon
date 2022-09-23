@@ -66,6 +66,13 @@ interface IVault {
             uint256 lastChangeBlock
         );
 
+    function queryBatchSwap(
+        SwapKind kind,
+        BatchSwapStep[] memory swaps,
+        address[] memory assets,
+        FundManagement memory funds
+    ) external returns (int256[] memory);
+
     struct BatchSwapStep {
         bytes32 poolId;
         uint256 assetInIndex;

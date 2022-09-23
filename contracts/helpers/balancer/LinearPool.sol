@@ -11,11 +11,12 @@ import "./Utils.sol";
 library LinearPoolHelper {
     using FixedPoint for uint256;
 
-    function nominalValue(address pool) external view returns (uint256) {
-        return
-            ILinearPool(pool).getVirtualSupply().mulDown(
-                ILinearPool(pool).getRate()
-            );
+    function nominalValue(address pool, uint256 balance)
+        external
+        view
+        returns (uint256)
+    {
+        return balance.mulDown(ILinearPool(pool).getRate());
     }
 
     function calcMainOutGivenBptIn(address pool, uint256 bptAmountIn)
