@@ -121,7 +121,7 @@ contract StablePoolAdapter is AbstractPoolAdapter {
         bool isFullExit = amountInGivenOut >
             FixedPoint.mulDown(
                 amountInAvailable,
-                FixedPoint.ONE - (slippage + slippage)
+                FixedPoint.ONE - basisPoints(100)
             );
 
         if (isFullExit) {
@@ -133,13 +133,13 @@ contract StablePoolAdapter is AbstractPoolAdapter {
                     amountIn,
                     tokenOut
                 ),
-                FixedPoint.ONE - slippage
+                FixedPoint.ONE - basisPoints(50)
             );
         } else {
             kind = uint8(IVault.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT);
             amountIn = FixedPoint.mulDown(
                 amountInGivenOut,
-                FixedPoint.ONE + slippage
+                FixedPoint.ONE + basisPoints(50)
             );
             amountOut = requestedAmountOut;
         }

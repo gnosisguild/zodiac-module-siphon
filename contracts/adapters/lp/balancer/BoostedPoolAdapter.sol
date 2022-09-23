@@ -176,7 +176,7 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         bool isFullExit = amountInGivenOut >
             FixedPoint.mulDown(
                 amountInAvailable,
-                FixedPoint.ONE - (slippage + slippage)
+                FixedPoint.ONE - basisPoints(100)
             );
 
         // Default mode is GIVEN_OUT, retrieving the exactly requested liquidity
@@ -185,20 +185,15 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         if (isFullExit) {
             kind = uint8(IVault.SwapKind.GIVEN_IN);
             amountIn = unstakedBPT + stakedBPT;
-            amountOut = FixedPoint.mulDown(
-                BoostedPoolHelper.calcStableOutGivenBptIn(
-                    pool,
-                    amountIn,
-                    tokenOut
-                ),
-                FixedPoint.ONE - slippage
+            amountOut = BoostedPoolHelper.calcStableOutGivenBptIn(
+                pool,
+                amountIn,
+                tokenOut
             );
         } else {
             kind = uint8(IVault.SwapKind.GIVEN_OUT);
-            amountIn = FixedPoint.mulDown(
-                amountInGivenOut,
-                FixedPoint.ONE + slippage
-            );
+            amountIn = amountInGivenOut;
+
             amountOut = requestedAmountOut;
 
             require(amountIn <= unstakedBPT + stakedBPT, "Invariant");

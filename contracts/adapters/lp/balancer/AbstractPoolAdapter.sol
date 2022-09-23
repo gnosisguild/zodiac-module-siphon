@@ -16,7 +16,6 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     uint256 public parityTolerance = basisPoints(20); // default to 20 basis points.
     uint256 public minBlockAge = 5; // default to 5 blocks.
-    uint256 public slippage = basisPoints(50); // default to 50 basis points.
 
     function setUp(bytes memory initParams) public override initializer {
         (
@@ -138,10 +137,6 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function setMinBlockAge(uint256 _minBlockAge) external onlyOwner {
         minBlockAge = _minBlockAge;
-    }
-
-    function setSlippage(uint256 bips) external onlyOwner {
-        slippage = basisPoints(bips);
     }
 
     function basisPoints(uint256 bips) public pure returns (uint256) {

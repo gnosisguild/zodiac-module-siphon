@@ -120,7 +120,7 @@ describe("LP: Balancer Stable Pool", async () => {
         BigNumber.from("0")
       );
 
-      const slippage = await adapter.slippage();
+      const slippage = await adapter.basisPoints(50);
       const outLiquidityUpper = adapterLiquidity.add(
         getSlippageSlice(adapterLiquidity, slippage)
       );
@@ -155,7 +155,7 @@ describe("LP: Balancer Stable Pool", async () => {
       );
       await expect(await adapter.balance()).to.equal(adapterLiquidity);
 
-      const slippage = await adapter.slippage();
+      const slippage = await adapter.basisPoints(50);
 
       // withdrawing slightly less than available, should yield full exit
       const requestedAmountOut = adapterLiquidity.sub(
@@ -257,7 +257,7 @@ describe("LP: Balancer Stable Pool", async () => {
       ).to.be.true;
 
       // we expect at some slippage crumbles of BPT to remain
-      const slippage = await adapter.slippage();
+      const slippage = await adapter.basisPoints(50);
       const bptAmountSwapped = BigNumber.from("1500000000000000000000000");
       const maxBptLeftovers = getSlippageSlice(bptAmountSwapped, slippage);
 
@@ -311,7 +311,7 @@ describe("LP: Balancer Stable Pool", async () => {
         avatarGaugeBalance
       );
 
-      const slippage = await adapter.slippage();
+      const slippage = await adapter.basisPoints(50);
       // approximation: 10% of balance requested, that's 20% of unstaked used
       const bptUsed = avatarGaugeBalance.div(100).mul(20);
       // approximation plus slippage
