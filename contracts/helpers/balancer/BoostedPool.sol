@@ -27,6 +27,26 @@ library BoostedPoolHelper {
         return total;
     }
 
+    function nominals(address pool)
+        external
+        view
+        returns (address[] memory, uint256[] memory)
+    {
+        (
+            address[] memory linearPools,
+            uint256[] memory linearBalances
+        ) = findLinearPools(pool);
+        uint256[] memory result = new uint256[](linearPools.length);
+        for (uint256 i = 0; i < linearPools.length; i++) {
+            result[i] = LinearPoolHelper.nominalValue(
+                linearPools[i],
+                linearBalances[i]
+            );
+        }
+
+        return (linearPools, result);
+    }
+
     // Computing from LinearPoolLeft MainToken (e.g., a stable coint)
     // To -> LinearPoolLeft Bpt
     // To -> LinearPoolRight Bpt
@@ -222,7 +242,6 @@ library BoostedPoolHelper {
         view
         returns (address[] memory stables, uint256[] memory balances)
     {
-        IStablePhantomPool pool = IStablePhantomPool(_pool);
         (
             address[] memory linearPools,
             uint256[] memory linearBalances
