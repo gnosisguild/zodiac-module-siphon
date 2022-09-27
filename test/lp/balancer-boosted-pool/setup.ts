@@ -104,6 +104,7 @@ export async function setup() {
   const tether = await hre.ethers.getContractAt("ERC20", TETHER.main);
   const usdc = await hre.ethers.getContractAt("ERC20", USDC.main);
   const boostedPoolHelper = await getBoostedPoolHelper();
+  const stablePhantomPoolHelper = await getStablePhantomHelper();
 
   return {
     avatar,
@@ -114,6 +115,7 @@ export async function setup() {
     tether,
     usdc,
     boostedPoolHelper,
+    stablePhantomPoolHelper,
   };
 }
 
@@ -189,6 +191,15 @@ export async function investInPool(
 
 async function getBoostedPoolHelper() {
   const deployment = await deployments.get("BoostedPoolHelper");
+  return new ethers.Contract(
+    deployment.address,
+    deployment.abi,
+    hre.ethers.provider
+  );
+}
+
+async function getStablePhantomHelper() {
+  const deployment = await deployments.get("StablePhantomPoolHelper");
   return new ethers.Contract(
     deployment.address,
     deployment.abi,

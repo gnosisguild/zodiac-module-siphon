@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import hre, { deployments, getNamedAccounts } from "hardhat";
 
+import { DAI_ADDRESS } from "../constants";
 import { fork, forkReset } from "../setup";
 
 import { setup, setupFundWhale, setupFundAvatar } from "./setup";
@@ -26,8 +27,15 @@ describe("LP: Balancer Boosted Pool", async () => {
       baseSetup = deployments.createFixture(async ({ deployments }) => {
         await deployments.fixture();
 
-        const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
-          await setup();
+        const {
+          avatar,
+          adapter,
+          pool,
+          gauge,
+          dai,
+          boostedPoolHelper,
+          stablePhantomPoolHelper,
+        } = await setup();
 
         await setupFundWhale(BOOSTED_GAUGE_TOP_HOLDERS);
 
@@ -37,7 +45,15 @@ describe("LP: Balancer Boosted Pool", async () => {
           BigNumber.from("1000000000000000000000000")
         );
 
-        return { avatar, adapter, pool, gauge, dai, boostedPoolHelper };
+        return {
+          avatar,
+          adapter,
+          pool,
+          gauge,
+          dai,
+          boostedPoolHelper,
+          stablePhantomPoolHelper,
+        };
       });
     });
 
@@ -46,7 +62,8 @@ describe("LP: Balancer Boosted Pool", async () => {
     });
 
     it("Withdrawing more than available balance yields full exit - outGivenIn", async () => {
-      const { avatar, adapter, pool, gauge, dai } = await baseSetup();
+      const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
+        await baseSetup();
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
@@ -93,21 +110,20 @@ describe("LP: Balancer Boosted Pool", async () => {
         BigNumber.from("0")
       );
 
-      const slippage = await adapter.basisPoints(50);
-      const outLiquidityUpper = adapterLiquidity.add(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
-      const outLiquidityLower = adapterLiquidity.sub(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
+      const calculatedAmountOut =
+        await boostedPoolHelper.calcStableOutGivenBptIn(
+          pool.address,
+          avatarBptBalance.add(avatarGaugeBalance),
+          DAI_ADDRESS
+        );
 
       const actualAmountOut = await dai.balanceOf(avatar.address);
 
-      // expect the amountOut to be around what was forecasted
-      expect(
-        actualAmountOut.gt(outLiquidityLower) &&
-          actualAmountOut.lt(outLiquidityUpper)
-      ).to.be.true;
+      const left = actualAmountOut.div(10000).mul(9999);
+      const right = actualAmountOut.div(10000).mul(10001);
+
+      expect(calculatedAmountOut.gt(left) && actualAmountOut.lt(right)).to.be
+        .true;
     });
 
     it("Withdrawing with requested amountOut close to balance yields full exit - outGivenIn", async () => {
@@ -128,12 +144,8 @@ describe("LP: Balancer Boosted Pool", async () => {
       );
       await expect(await adapter.balance()).to.equal(adapterLiquidity);
 
-      const slippage = await adapter.basisPoints(50);
-
       // withdrawing slightly less than available, should yield full exit
-      const requestedAmountOut = adapterLiquidity.sub(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
+      const requestedAmountOut = adapterLiquidity.div(1000).mul(999);
 
       const instructions = await adapter.withdrawalInstructions(
         requestedAmountOut
@@ -158,19 +170,8 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       await expect(await gauge.balanceOf(avatar.address)).to.equal(0);
 
-      // expect the amountOut to be around what was forecasted
-      const outLiquidityUpper = adapterLiquidity.add(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
-      const outLiquidityLower = adapterLiquidity.sub(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
-
       const actualAmountOut = await dai.balanceOf(avatar.address);
-      expect(
-        actualAmountOut.gt(outLiquidityLower) &&
-          actualAmountOut.lt(outLiquidityUpper)
-      ).to.be.true;
+      expect(actualAmountOut).to.gte(requestedAmountOut);
     });
 
     it("Withdrawing with partial unstake - inGivenOut", async () => {
@@ -229,10 +230,8 @@ describe("LP: Balancer Boosted Pool", async () => {
           )
       ).to.be.true;
 
-      // we expect at some slippage crumbles of BPT to remain
-      const slippage = await adapter.basisPoints(50);
       const bptAmountSwapped = BigNumber.from("1500000000000000000000000");
-      const maxBptLeftovers = getSlippageSlice(bptAmountSwapped, slippage);
+      const maxBptLeftovers = bptAmountSwapped.div(100);
 
       await expect((await pool.balanceOf(avatar.address)).lt(maxBptLeftovers))
         .to.be.true;
@@ -283,14 +282,12 @@ describe("LP: Balancer Boosted Pool", async () => {
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
         avatarGaugeBalance
       );
-
-      const slippage = await adapter.basisPoints(50);
       // approximation: 10% of balance requested, that's 20% of unstaked used
-      const bptUsed = avatarGaugeBalance.div(100).mul(20);
+      const bptUsed = avatarBptBalance.div(100).mul(20);
       // approximation plus slippage
-      const bptUsedMore = bptUsed.add(getSlippageSlice(bptUsed, slippage));
+      const bptUsedMore = bptUsed.div(1000).mul(1005);
       // approximation less slippage
-      const bptUsedLess = bptUsed.sub(getSlippageSlice(bptUsed, slippage));
+      const bptUsedLess = bptUsed.div(1000).mul(995);
 
       const bptUnusedUpper = avatarBptBalance.sub(bptUsedLess);
       const bptUnusedLower = avatarBptBalance.sub(bptUsedMore);
@@ -352,13 +349,8 @@ describe("LP: Balancer Boosted Pool", async () => {
         BigNumber.from("0")
       );
 
-      const slippage = await adapter.basisPoints(50);
-      const outLiquidityUpper = adapterLiquidity.add(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
-      const outLiquidityLower = adapterLiquidity.sub(
-        getSlippageSlice(adapterLiquidity, slippage)
-      );
+      const outLiquidityUpper = adapterLiquidity.div(1000).mul(1005);
+      const outLiquidityLower = adapterLiquidity.div(1000).mul(995);
 
       const actualAmountOut = await dai.balanceOf(avatar.address);
 

@@ -68,26 +68,6 @@ export async function fundWhaleWithBpt(
   await gauge["withdraw(uint256)"](balance);
 }
 
-export async function fundWhale(
-  tokenAddress: string,
-  fromAddress: string
-): Promise<Contract> {
-  const { BigWhale } = await getNamedAccounts();
-
-  const token = await hre.ethers.getContractAt("ERC20", tokenAddress);
-
-  await fundWithEth(fromAddress);
-
-  await hre.network.provider.request({
-    method: "hardhat_impersonateAccount",
-    params: [fromAddress],
-  });
-  const signer = await hre.ethers.provider.getSigner(fromAddress);
-  const balance = await token.balanceOf(fromAddress);
-  await token.connect(signer).transfer(BigWhale, balance);
-  return token;
-}
-
 export async function fundWithERC20(
   tokenAddress: string,
   from: string,
@@ -107,7 +87,27 @@ export async function fundWithERC20(
   return token;
 }
 
-export async function fundWithEth(account: string) {
+async function fundWhale(
+  tokenAddress: string,
+  from: string
+): Promise<Contract> {
+  const { BigWhale } = await getNamedAccounts();
+
+  const token = await hre.ethers.getContractAt("ERC20", tokenAddress);
+
+  await fundWithEth(from);
+
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [from],
+  });
+  const signer = await hre.ethers.provider.getSigner(from);
+  const balance = await token.balanceOf(from);
+  await token.connect(signer).transfer(BigWhale, balance);
+  return token;
+}
+
+async function fundWithEth(account: string) {
   const { BigWhale } = await getNamedAccounts();
   const signer = hre.ethers.provider.getSigner(BigWhale);
 
