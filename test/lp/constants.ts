@@ -104,6 +104,7 @@ export const poolAbi = [
   "function decimals() view returns (uint8)",
   "function getPoolId() view returns (bytes32)",
   "function totalSupply() view returns (uint256)",
+  "function getVirtualSupply() view returns (uint256)",
   "function transfer(address recipient, uint256 amount) returns (bool)",
   "function transferFrom(address sender, address recipient, uint256 amount) returns (bool)",
   "function approve(address _spender, uint256 _value) returns (bool)",

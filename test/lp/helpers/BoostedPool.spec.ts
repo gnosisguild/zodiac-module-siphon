@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { BigNumber, Contract } from "ethers";
-import hre, { deployments, getNamedAccounts } from "hardhat";
+import hre, { deployments, ethers, getNamedAccounts } from "hardhat";
 
 import {
   BOOSTED_POOL_ADDRESS,
@@ -152,9 +152,9 @@ export async function queryStableOutGivenStableIn(
     steps,
     assets,
     {
-      sender: BigWhale,
+      sender: ethers.constants.AddressZero,
       fromInternalBalance: false,
-      recipient: BigWhale,
+      recipient: ethers.constants.AddressZero,
       toInternalBalance: false,
     }
   );

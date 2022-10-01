@@ -60,6 +60,12 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     },
     log: true,
   });
+
+  await deploy("VaultHelper", {
+    from: deployer,
+    args: [],
+    log: true,
+  });
 };
 
 export default deploy;
