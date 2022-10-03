@@ -13,7 +13,7 @@ import {
 } from "../constants";
 import { fork, forkReset, fundWhaleWithStables } from "../setup";
 
-describe.only("LP: Vault Helper", async () => {
+describe("LP: Vault Helper", async () => {
   let baseSetup: any;
 
   before(async () => {
