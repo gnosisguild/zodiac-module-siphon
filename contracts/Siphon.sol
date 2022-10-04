@@ -120,7 +120,7 @@ contract Siphon is Module, MultisendEncoder {
             revert NoLiquidityInvested();
         }
 
-        if (!lp.canWithdraw()) {
+        if (!lp.assessPreWithdraw()) {
             revert WithdrawalBlocked();
         }
 
@@ -139,6 +139,10 @@ contract Siphon is Module, MultisendEncoder {
         );
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert WithdrawalFailed();
+        }
+
+        if (!lp.assessPostWithdraw()) {
+            revert WithdrawalBlocked();
         }
 
         nextBalance = IERC20(lp.asset()).balanceOf(avatar);

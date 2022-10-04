@@ -46,9 +46,12 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function balance() public virtual override returns (uint256);
 
-    function canWithdraw() external override returns (bool) {
-        // we should make sure the pool has at least 1M nomimal value?
-        return isOldEnough() && isInParity();
+    function assessPreWithdraw() external view override returns (bool) {
+        return isOldEnough();
+    }
+
+    function assessPostWithdraw() external override returns (bool) {
+        return isInParity();
     }
 
     function withdrawalInstructions(uint256 requestedAmountOut)

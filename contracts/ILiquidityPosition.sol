@@ -8,7 +8,9 @@ interface ILiquidityPosition {
 
     function balance() external returns (uint256);
 
-    function canWithdraw() external returns (bool);
+    function assessPreWithdraw() external returns (bool);
+
+    function assessPostWithdraw() external returns (bool);
 
     function withdrawalInstructions(uint256 amount)
         external
