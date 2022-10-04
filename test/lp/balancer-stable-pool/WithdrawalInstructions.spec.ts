@@ -88,12 +88,12 @@ describe("LP: Balancer Stable Pool", async () => {
         avatarGaugeBalance
       );
 
-      expect(await adapter.balance()).to.equal(adapterLiquidity);
+      expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       // // requesting 2x more than available
       const requestedAmountOut = adapterLiquidity.mul(2);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 
@@ -153,7 +153,9 @@ describe("LP: Balancer Stable Pool", async () => {
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
         avatarGaugeBalance
       );
-      await expect(await adapter.balance()).to.equal(adapterLiquidity);
+      await expect(await adapter.callStatic.balance()).to.equal(
+        adapterLiquidity
+      );
 
       const slippage = await adapter.basisPoints(50);
 
@@ -162,7 +164,7 @@ describe("LP: Balancer Stable Pool", async () => {
         getSlippageSlice(adapterLiquidity, slippage)
       );
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 
@@ -218,12 +220,12 @@ describe("LP: Balancer Stable Pool", async () => {
         avatarGaugeBalance
       );
 
-      expect(await adapter.balance()).to.equal(adapterLiquidity);
+      expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       // roughly 75% of what's available in the liquidity position
       const requestedAmountOut = adapterLiquidity.div(100).mul(75);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 
@@ -283,12 +285,14 @@ describe("LP: Balancer Stable Pool", async () => {
         avatarGaugeBalance
       );
 
-      await expect(await adapter.balance()).to.equal(adapterLiquidity);
+      await expect(await adapter.callStatic.balance()).to.equal(
+        adapterLiquidity
+      );
 
       // 10% of what's available
       const requestedAmountOut = adapterLiquidity.div(100).mul(10);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 

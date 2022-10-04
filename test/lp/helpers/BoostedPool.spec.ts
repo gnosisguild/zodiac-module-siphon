@@ -48,134 +48,111 @@ describe("LP: Balancer Boosted Pool Helper", async () => {
   });
 
   it("it correctly calculates stableOut given stableIn", async () => {
-    const { pool, vault } = await baseSetup();
+    const { pool } = await baseSetup();
+
+    const boostedPoolHelper = await getBoostedPoolHelper();
 
     const amountIn = BigNumber.from(String(1000 * 10 ** 6));
-    const amountOut = await queryStableOutGivenStableIn(
-      vault,
-      pool,
+    const amountOutCalc = await boostedPoolHelper.calcStableOutGivenStableIn(
+      pool.address,
       USDC_ADDRESS,
       amountIn,
       TETHER_ADDRESS
     );
 
-    const boostedPoolHelper = await getBoostedPoolHelper();
-    const utils = await getUtilsDeployment();
+    const amountOutQuery =
+      await boostedPoolHelper.callStatic.queryStableOutGivenStableIn(
+        pool.address,
+        USDC_ADDRESS,
+        amountIn,
+        TETHER_ADDRESS
+      );
 
-    const priceReconstructed = await utils.price(
+    expect(amountOutCalc).to.equal(amountOutQuery);
+  });
+
+  it("it correctly calculates stableOut given stableIn", async () => {
+    const { pool } = await baseSetup();
+
+    const amountIn = BigNumber.from(String(1000 * 10 ** 6));
+
+    const boostedPoolHelper = await getBoostedPoolHelper();
+
+    const amountOutQuery =
+      await boostedPoolHelper.callStatic.queryStableOutGivenStableIn(
+        pool.address,
+        USDC_ADDRESS,
+        amountIn,
+        TETHER_ADDRESS
+      );
+
+    const amountOutCalc = await boostedPoolHelper.calcStableOutGivenStableIn(
+      pool.address,
       USDC_ADDRESS,
       amountIn,
+      TETHER_ADDRESS
+    );
+
+    expect(amountOutQuery).to.equal(amountOutCalc);
+  });
+
+  it("it correctly calculates stableOut given bptIn", async () => {
+    const { pool } = await baseSetup();
+
+    const amountIn = (await pool.getVirtualSupply()).div(BigNumber.from(1000));
+
+    const boostedPoolHelper = await getBoostedPoolHelper();
+
+    const amountOutQuery =
+      await boostedPoolHelper.callStatic.queryStableOutGivenBptIn(
+        pool.address,
+        amountIn,
+        TETHER_ADDRESS
+      );
+
+    const amountOutCalc = await boostedPoolHelper.calcStableOutGivenBptIn(
+      pool.address,
+      amountIn,
+      TETHER_ADDRESS
+    );
+
+    expect(amountOutQuery).to.equal(amountOutCalc);
+  });
+
+  it("it correctly calculates bptIn given stableOut", async () => {
+    const { pool, tether } = await baseSetup();
+
+    const decimals = await tether.decimals();
+
+    const amountOut = BigNumber.from(String(1000 * 10 ** decimals));
+
+    const boostedPoolHelper = await getBoostedPoolHelper();
+
+    const amountOutQuery =
+      await boostedPoolHelper.callStatic.queryBptInGivenStableOut(
+        pool.address,
+        TETHER_ADDRESS,
+        amountOut
+      );
+
+    const amountOutCalc = await boostedPoolHelper.calcBptInGivenStableOut(
+      pool.address,
       TETHER_ADDRESS,
       amountOut
     );
 
-    const price = await boostedPoolHelper.calcPrice(
-      BOOSTED_POOL_ADDRESS,
-      USDC_ADDRESS,
-      TETHER_ADDRESS
-    );
-
-    expect(priceReconstructed).to.equal(price);
+    expect(amountOutQuery).to.equal(amountOutCalc);
   });
 });
 
-export async function queryStableOutGivenStableIn(
-  vault: Contract,
-  pool: Contract,
-  tokenIn: string,
-  amountIn: BigNumber,
-  tokenOut: string
-): Promise<BigNumber> {
-  const { BigWhale } = await getNamedAccounts();
-
-  const boostedPoolHelper = await getBoostedPoolHelper();
-
-  const linearPoolInAddress = await boostedPoolHelper.findLinearPool(
-    BOOSTED_POOL_ADDRESS,
-    tokenIn
-  );
-
-  const linearPoolOutAddress = await boostedPoolHelper.findLinearPool(
-    BOOSTED_POOL_ADDRESS,
-    tokenOut
-  );
-
-  const poolIn = new hre.ethers.Contract(
-    linearPoolInAddress,
-    poolAbi,
-    hre.ethers.provider
-  );
-  const poolOut = new hre.ethers.Contract(
-    linearPoolOutAddress,
-    poolAbi,
-    hre.ethers.provider
-  );
-
-  const poolInId = await poolIn.getPoolId();
-  const poolId = await pool.getPoolId();
-  const poolOutId = await poolOut.getPoolId();
-
-  const tokenInIndex = 0;
-  const linearInIndex = 1;
-  const linearOutIndex = 2;
-  const tokenOutIndex = 3;
-
-  const assets = [tokenIn, linearPoolInAddress, linearPoolOutAddress, tokenOut];
-
-  const steps = [
-    {
-      poolId: poolInId,
-      assetInIndex: tokenInIndex,
-      assetOutIndex: linearInIndex,
-      amount: amountIn,
-      userData: "0x",
-    },
-    {
-      poolId,
-      assetInIndex: linearInIndex,
-      assetOutIndex: linearOutIndex,
-      amount: 0,
-      userData: "0x",
-    },
-    {
-      poolId: poolOutId,
-      assetInIndex: linearOutIndex,
-      assetOutIndex: tokenOutIndex,
-      amount: 0,
-      userData: "0x",
-    },
-  ];
-
-  const limits = await vault.queryBatchSwap(
-    // GivenIn
-    0,
-    steps,
-    assets,
-    {
-      sender: ethers.constants.AddressZero,
-      fromInternalBalance: false,
-      recipient: ethers.constants.AddressZero,
-      toInternalBalance: false,
-    }
-  );
-
-  return BigNumber.from("-1").mul(limits[tokenOutIndex]);
-}
-
 async function getBoostedPoolHelper() {
-  const deployment = await deployments.get("BoostedPoolHelper");
-  return new hre.ethers.Contract(
-    deployment.address,
-    deployment.abi,
-    hre.ethers.provider
-  );
-}
+  const BoostedPoolHelper = await deployments.get("BoostedPoolHelper");
 
-async function getUtilsDeployment() {
-  const deployment = await deployments.get("Utils");
-  return new hre.ethers.Contract(
-    deployment.address,
-    deployment.abi,
-    hre.ethers.provider
-  );
+  const Helper = await hre.ethers.getContractFactory("BoostedPoolHelperMock", {
+    libraries: {
+      BoostedPoolHelper: BoostedPoolHelper.address,
+    },
+  });
+  const helper = await Helper.deploy();
+  return helper;
 }

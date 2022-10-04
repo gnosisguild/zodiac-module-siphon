@@ -12,22 +12,6 @@ import "./VaultQuery.sol";
 library BoostedPoolHelper {
     using FixedPoint for uint256;
 
-    //  function nominalValue(address pool) external view returns (uint256) {
-    //     (
-    //         address[] memory linearPools,
-    //         uint256[] memory linearBalances
-    //     ) = findLinearPools(pool);
-    //     uint256 total;
-    //     for (uint256 i = 0; i < linearPools.length; i++) {
-    //         total += LinearPoolHelper.nominalValue(
-    //             linearPools[i],
-    //             linearBalances[i]
-    //         );
-    //     }
-
-    //     return total;
-    // }
-
     function queryStableOutGivenStableIn(
         address pool,
         address tokenIn,
@@ -192,7 +176,7 @@ library BoostedPoolHelper {
 
         uint256 min = 0;
         for (uint256 i = 1; i < balances.length; i++) {
-            if (balances[min] < balances[i]) {
+            if (balances[i] < balances[min]) {
                 min = i;
             }
         }
@@ -201,33 +185,13 @@ library BoostedPoolHelper {
         for (uint256 i = 0; i < prices.length; i++) {
             prices[i] = (i == min)
                 ? FixedPoint.ONE
-                : queryPrice(pool, tokens[min], tokens[i]);
+                : calcPrice(pool, tokens[min], tokens[i]);
         }
 
         return (tokens, prices);
     }
 
     function calcPrice(
-        address pool,
-        address stable1,
-        address stable2
-    ) public view returns (uint256) {
-        uint256 amountIn = 1000 * 10**ERC20(stable1).decimals();
-        uint256 amountOut = calcStableOutGivenStableIn(
-            pool,
-            stable1,
-            amountIn,
-            stable2
-        );
-
-        return
-            FixedPoint.divDown(
-                Utils.inferAndUpscale(amountIn, stable1),
-                Utils.inferAndUpscale(amountOut, stable2)
-            );
-    }
-
-    function queryPrice(
         address pool,
         address stable1,
         address stable2
@@ -284,7 +248,7 @@ library BoostedPoolHelper {
     }
 
     function nominalBalances(address _pool)
-        private
+        internal
         view
         returns (address[] memory stables, uint256[] memory balances)
     {

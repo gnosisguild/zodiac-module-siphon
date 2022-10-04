@@ -2,20 +2,10 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import hre, { deployments, getNamedAccounts } from "hardhat";
 
-import { DAI_ADDRESS } from "../constants";
+import { BOOSTED_GAUGE_TOP_HOLDERS, DAI_ADDRESS } from "../constants";
 import { fork, forkReset } from "../setup";
 
 import { setup, setupFundWhale, setupFundAvatar } from "./setup";
-
-export const BOOSTED_GAUGE_TOP_HOLDERS = [
-  "0x995a09ed0b24ee13fbfcfbe60cad2fb6281b479f",
-  "0xb1ff8bf9c3a55877b5ee38e769e7a78cd000848e",
-  "0x44e5f536429363dd2a20ce31e3666c300233d151",
-  "0x81fa0f35b54790f78e76c74d05bd6d95632c030b",
-  "0x3a3ee61f7c6e1994a2001762250a5e17b2061b6d",
-  "0x8d8f55c99971b9e69967a406419ed815ee63d3cd",
-  "0x98bea99727b297f5eca448d1640075f349c08547",
-];
 
 describe("LP: Balancer Boosted Pool", async () => {
   describe("withdrawalInstructions", async () => {
@@ -67,7 +57,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
+      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -78,12 +68,12 @@ describe("LP: Balancer Boosted Pool", async () => {
         avatarGaugeBalance
       );
 
-      expect(await adapter.balance()).to.equal(adapterLiquidity);
+      expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       // requesting 10x more than available
       const requestedAmountOut = adapterLiquidity.mul(10);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 
@@ -111,7 +101,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       );
 
       const calculatedAmountOut =
-        await boostedPoolHelper.calcStableOutGivenBptIn(
+        await boostedPoolHelper.callStatic.calcStableOutGivenBptIn(
           pool.address,
           avatarBptBalance.add(avatarGaugeBalance),
           DAI_ADDRESS
@@ -131,7 +121,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
+      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -142,12 +132,14 @@ describe("LP: Balancer Boosted Pool", async () => {
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
         avatarGaugeBalance
       );
-      await expect(await adapter.balance()).to.equal(adapterLiquidity);
+      await expect(await adapter.callStatic.balance()).to.equal(
+        adapterLiquidity
+      );
 
       // withdrawing slightly less than available, should yield full exit
       const requestedAmountOut = adapterLiquidity.div(1000).mul(999);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 
@@ -181,7 +173,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
+      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -192,12 +184,12 @@ describe("LP: Balancer Boosted Pool", async () => {
         avatarGaugeBalance
       );
 
-      expect(await adapter.balance()).to.equal(adapterLiquidity);
+      expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       // roughly 75% of what's available in the liquidity position
       const requestedAmountOut = adapterLiquidity.div(100).mul(75);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 
@@ -242,7 +234,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
+      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -255,12 +247,14 @@ describe("LP: Balancer Boosted Pool", async () => {
         avatarGaugeBalance
       );
 
-      await expect(await adapter.balance()).to.equal(adapterLiquidity);
+      await expect(await adapter.callStatic.balance()).to.equal(
+        adapterLiquidity
+      );
 
       // 10% of what's available
       const requestedAmountOut = adapterLiquidity.div(100).mul(10);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 
@@ -304,7 +298,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
+      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
       const daiBalanceInPool = BigNumber.from("7587123402631046351019170");
 
       // Avatar has zero DAI
@@ -316,13 +310,13 @@ describe("LP: Balancer Boosted Pool", async () => {
         avatarGaugeBalance
       );
 
-      expect(await adapter.balance()).to.equal(adapterLiquidity);
+      expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       expect(
         await boostedPoolHelper.calcMaxStableOut(pool.address, dai.address)
       ).to.equal(daiBalanceInPool);
 
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         daiBalanceInPool.mul(2)
       );
 
@@ -394,7 +388,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       // request for more than actually lives in the linearPool.
       // Avatar has around 80% of the pool tokens, so nominally
       // enough for the requested amount
-      const instructions = await adapter.withdrawalInstructions(
+      const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
       );
 

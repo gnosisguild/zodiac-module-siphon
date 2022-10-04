@@ -190,12 +190,15 @@ export async function investInPool(
 }
 
 async function getBoostedPoolHelper() {
-  const deployment = await deployments.get("BoostedPoolHelper");
-  return new ethers.Contract(
-    deployment.address,
-    deployment.abi,
-    hre.ethers.provider
-  );
+  const BoostedPoolHelper = await deployments.get("BoostedPoolHelper");
+
+  const Helper = await hre.ethers.getContractFactory("BoostedPoolHelperMock", {
+    libraries: {
+      BoostedPoolHelper: BoostedPoolHelper.address,
+    },
+  });
+  const helper = await Helper.deploy();
+  return helper;
 }
 
 async function getStablePhantomHelper() {

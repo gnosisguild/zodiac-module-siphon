@@ -3,20 +3,15 @@ import { BigNumber } from "ethers";
 import { getAddress } from "ethers/lib/utils";
 import hre, { deployments, getNamedAccounts } from "hardhat";
 
-import { DAI_ADDRESS, TETHER_ADDRESS, USDC_ADDRESS } from "../constants";
+import {
+  BOOSTED_GAUGE_TOP_HOLDERS,
+  DAI_ADDRESS,
+  TETHER_ADDRESS,
+  USDC_ADDRESS,
+} from "../constants";
 import { fork, forkReset, fundWhaleWithStables } from "../setup";
 
 import { setup, setupFundWhale, setupFundAvatar, investInPool } from "./setup";
-
-export const BOOSTED_GAUGE_TOP_HOLDERS = [
-  "0x995a09ed0b24ee13fbfcfbe60cad2fb6281b479f",
-  "0xb1ff8bf9c3a55877b5ee38e769e7a78cd000848e",
-  "0x44e5f536429363dd2a20ce31e3666c300233d151",
-  "0x81fa0f35b54790f78e76c74d05bd6d95632c030b",
-  "0x3a3ee61f7c6e1994a2001762250a5e17b2061b6d",
-  "0x8d8f55c99971b9e69967a406419ed815ee63d3cd",
-  "0x98bea99727b297f5eca448d1640075f349c08547",
-];
 
 describe("LP: Balancer Boosted Pool", async () => {
   describe("isInParity", async () => {
@@ -73,7 +68,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       const signer = hre.ethers.provider.getSigner(BigWhale);
       // the default value is 20 bips 0.2%
       await adapter.connect(signer).setParityTolerance(20);
-      expect(await adapter.isInParity()).to.equal(true);
+      expect(await adapter.callStatic.isInParity()).to.equal(true);
     });
 
     it("is not in parity for an unbalanced pool", async () => {
@@ -83,17 +78,19 @@ describe("LP: Balancer Boosted Pool", async () => {
       const signer = hre.ethers.provider.getSigner(BigWhale);
 
       // pool initially in parity
-      expect(await adapter.isInParity()).to.equal(true);
+      expect(await adapter.callStatic.isInParity()).to.equal(true);
 
-      const before = await boostedPoolHelper.calcPrices(pool.address);
+      const before = await boostedPoolHelper.callStatic.calcPrices(
+        pool.address
+      );
       const pricesBefore = pricesToReadable(before);
 
       // const nominalsBefore = await boostedPoolHelper.nominals(pool.address);
       // console.log("Before", nominalsBefore.toString());
 
       expect(pricesBefore.dai).to.equal("0.999900");
-      expect(pricesBefore.usdc).to.equal("1.000000");
-      expect(pricesBefore.tether).to.equal("0.999900");
+      expect(pricesBefore.usdc).to.equal("0.999900");
+      expect(pricesBefore.tether).to.equal("1.000000");
 
       // Inject 200 million in DAI which is enough to move the price
 
@@ -102,80 +99,20 @@ describe("LP: Balancer Boosted Pool", async () => {
         BigNumber.from("200000000000000000000000000")
       );
 
-      // const nominalsAfter = await boostedPoolHelper.nominals(pool.address);
-      // console.log("AFTER", nominalsAfter.toString());
-
-      const after = await boostedPoolHelper.calcPrices(pool.address);
+      const after = await boostedPoolHelper.callStatic.calcPrices(pool.address);
       const pricesAfter = pricesToReadable(after);
 
-      expect(pricesAfter.dai).to.equal("1.000000");
-      expect(pricesAfter.usdc).to.equal("0.996300");
-      expect(pricesAfter.tether).to.equal("0.996100");
+      expect(pricesAfter.dai).to.equal("0.996100");
+      expect(pricesAfter.usdc).to.equal("0.999800");
+      expect(pricesAfter.tether).to.equal("1.000000");
 
       await adapter.connect(signer).setParityTolerance(15);
 
-      expect(await adapter.isInParity()).to.equal(false);
+      expect(await adapter.callStatic.isInParity()).to.equal(false);
 
       await adapter.connect(signer).setParityTolerance(40);
 
-      expect(await adapter.isInParity()).to.equal(true);
-    });
-
-    it.only("try it out", async () => {
-      const { vault, pool, dai } = await baseSetup();
-
-      const boostedPoolHelper = await getBoostedPoolHelper();
-
-      const { BigWhale } = await getNamedAccounts();
-
-      const pricesBefore = await boostedPoolHelper.callStatic.calcPrices(
-        pool.address
-      );
-      // const nominalsBefore = await boostedPoolHelper.nominals(pool.address);
-      // console.log(
-      //   "Before",
-      //   nominalsBefore.map((a: any) => a.toString())
-      // );
-      console.log("Prices Before", pricesToReadable(pricesBefore));
-
-      // Inject 200 million in DAI which is enough to move the price
-
-      await investInPool(
-        dai.address,
-        BigNumber.from("200000000000000000000000000")
-      );
-
-      const pricesAfter = await boostedPoolHelper.callStatic.calcPrices(
-        pool.address
-      );
-      // const nominalsAfter = await boostedPoolHelper.nominals(pool.address);
-      // console.log(
-      //   "AFTER",
-      //   nominalsAfter.map((a: any) => a.toString())
-      // );
-      console.log("PRICES AFTER", pricesToReadable(pricesAfter));
-
-      const tetherOutFromDai = await boostedPoolHelper.callStatic.calcInOut(
-        pool.address,
-        DAI_ADDRESS,
-        TETHER_ADDRESS
-      );
-
-      const usdcOutFromDai = await boostedPoolHelper.callStatic.calcInOut(
-        pool.address,
-        DAI_ADDRESS,
-        USDC_ADDRESS
-      );
-
-      console.log(
-        "Tetherfromdai ",
-        tetherOutFromDai.div(BigNumber.from("1000000000000000000")).toString()
-      );
-
-      console.log(
-        "usdcfromdai ",
-        usdcOutFromDai.div(BigNumber.from("1000000000000000000")).toString()
-      );
+      expect(await adapter.callStatic.isInParity()).to.equal(true);
     });
   });
 });
@@ -200,20 +137,4 @@ function priceToReadable(price: BigNumber): string {
 
 function countBasisPoints(bn: BigNumber): number {
   return bn.div(BigNumber.from("100000000000000")).toNumber();
-}
-
-async function getBoostedPoolHelper() {
-  const BoostedPoolHelper = await deployments.get("BoostedPoolHelper");
-  const LinearPoolHelper = await deployments.get("LinearPoolHelper");
-  const Utils = await deployments.get("Utils");
-
-  const Helper = await hre.ethers.getContractFactory("BoostedPoolHelperMock", {
-    libraries: {
-      BoostedPoolHelper: BoostedPoolHelper.address,
-      LinearPoolHelper: LinearPoolHelper.address,
-      Utils: Utils.address,
-    },
-  });
-  const helper = await Helper.deploy();
-  return helper;
 }
