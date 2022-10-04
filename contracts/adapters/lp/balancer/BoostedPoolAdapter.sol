@@ -152,7 +152,7 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         // another 5M withdraw
         requestedAmountOut = Math.min(
             requestedAmountOut,
-            BoostedPoolHelper.calcMaxStableOut(pool, tokenOut)
+            BoostedPoolHelper.effectiveStableBalance(pool, tokenOut)
         );
 
         uint256 amountInAvailable = unstakedBPT + stakedBPT;

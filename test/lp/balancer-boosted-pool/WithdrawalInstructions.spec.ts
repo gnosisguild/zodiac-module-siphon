@@ -299,7 +299,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
       const adapterLiquidity = BigNumber.from("2029247134262182408154990");
-      const daiBalanceInPool = BigNumber.from("7587123402631046351019170");
+      const daiBalanceInPool = BigNumber.from("4688641130857217794578086");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -313,7 +313,10 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       expect(
-        await boostedPoolHelper.calcMaxStableOut(pool.address, dai.address)
+        await boostedPoolHelper.effectiveStableBalance(
+          pool.address,
+          dai.address
+        )
       ).to.equal(daiBalanceInPool);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
@@ -364,7 +367,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const daiBalanceInPool = BigNumber.from("7587123402631046351019170");
+      const daiBalanceInPool = BigNumber.from("4688641130857217794578086");
       const requestedAmountOut = BigNumber.from("9000000000000000000000000");
 
       const whaleBptBalance = await pool.balanceOf(BigWhale);
@@ -382,7 +385,10 @@ describe("LP: Balancer Boosted Pool", async () => {
       );
 
       expect(
-        await boostedPoolHelper.calcMaxStableOut(pool.address, dai.address)
+        await boostedPoolHelper.effectiveStableBalance(
+          pool.address,
+          dai.address
+        )
       ).to.equal(daiBalanceInPool);
 
       // request for more than actually lives in the linearPool.
@@ -415,12 +421,3 @@ describe("LP: Balancer Boosted Pool", async () => {
     });
   });
 });
-
-function countBasisPoints(bn: BigNumber): BigNumber {
-  return bn.div(BigNumber.from("100000000000000"));
-}
-
-function getSlippageSlice(amount: BigNumber, slippage: BigNumber) {
-  const bips = countBasisPoints(slippage);
-  return amount.div(10000).mul(bips);
-}

@@ -105,11 +105,11 @@ contract BoostedPoolHelperMock {
         return BoostedPoolHelper.findLinearPool(pool, mainToken);
     }
 
-    function calcMaxStableOut(address pool, address tokenOut)
+    function effectiveStableBalance(address pool, address tokenOut)
         public
         view
         returns (uint256)
     {
-        return BoostedPoolHelper.calcMaxStableOut(pool, tokenOut);
+        return BoostedPoolHelper.effectiveStableBalance(pool, tokenOut);
     }
 }

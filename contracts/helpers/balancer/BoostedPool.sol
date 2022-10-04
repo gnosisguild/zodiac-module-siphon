@@ -157,15 +157,6 @@ library BoostedPoolHelper {
             );
     }
 
-    function calcMaxStableOut(address pool, address tokenOut)
-        public
-        view
-        returns (uint256)
-    {
-        address linearPool = findLinearPool(pool, tokenOut);
-        return LinearPoolHelper.calcMaxMainOut(linearPool);
-    }
-
     function calcPrices(address pool)
         public
         returns (address[] memory, uint256[] memory)
@@ -265,5 +256,14 @@ library BoostedPoolHelper {
                 ILinearPool(linearPools[i]).getRate()
             );
         }
+    }
+
+    function effectiveStableBalance(address pool, address stable)
+        public
+        view
+        returns (uint256)
+    {
+        address linearPool = findLinearPool(pool, stable);
+        return LinearPoolHelper.effectiveMainBalance(linearPool);
     }
 }
