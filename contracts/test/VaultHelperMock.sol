@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
-import "../helpers/balancer/Vault.sol";
+import "../helpers/balancer/VaultQuery.sol";
 
 pragma solidity ^0.8.6;
 
@@ -8,13 +8,17 @@ contract VaultHelperMock {
         address pool,
         address tokenIn,
         uint256 amountIn,
+        address linearPoolLeft,
+        address linearPoolRight,
         address tokenOut
     ) public returns (uint256) {
         return
-            VaultHelper.queryStableOutGivenStableIn(
+            VaultQueryHelper.queryStableOutGivenStableIn(
                 pool,
                 tokenIn,
                 amountIn,
+                linearPoolLeft,
+                linearPoolRight,
                 tokenOut
             );
     }
@@ -22,16 +26,30 @@ contract VaultHelperMock {
     function queryStableOutGivenBptIn(
         address pool,
         uint256 amountIn,
+        address linearPool,
         address tokenOut
     ) public returns (uint256) {
-        return VaultHelper.queryStableOutGivenBptIn(pool, amountIn, tokenOut);
+        return
+            VaultQueryHelper.queryStableOutGivenBptIn(
+                pool,
+                amountIn,
+                linearPool,
+                tokenOut
+            );
     }
 
     function queryBptInGivenStableOut(
         address pool,
+        address linearPool,
         address tokenOut,
         uint256 amountOut
     ) public returns (uint256) {
-        return VaultHelper.queryBptInGivenStableOut(pool, tokenOut, amountOut);
+        return
+            VaultQueryHelper.queryBptInGivenStableOut(
+                pool,
+                linearPool,
+                tokenOut,
+                amountOut
+            );
     }
 }

@@ -27,31 +27,21 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         setUp(initParams);
     }
 
-    function isInParity() public view override returns (bool) {
-        address[] memory stableTokens = BoostedPoolHelper.findStableTokens(
-            pool
-        );
+    function isInParity() public override returns (bool) {
+        (, uint256[] memory prices) = BoostedPoolHelper.calcPrices(pool);
 
         uint256 delta = 0;
-        for (uint256 i = 1; i < stableTokens.length; i++) {
-            uint256 price = BoostedPoolHelper.calcPrice(
-                pool,
-                stableTokens[0],
-                stableTokens[i]
-            );
-            uint256 nextDelta = price > FixedPoint.ONE
-                ? price - FixedPoint.ONE
-                : FixedPoint.ONE - price;
-
+        for (uint256 i = 0; i < prices.length; i++) {
+            uint256 nextDelta = FixedPoint.ONE - prices[i];
             delta = Math.max(delta, nextDelta);
         }
         return delta < parityTolerance;
     }
 
-    function balance() public view override returns (uint256) {
+    function balance() public override returns (uint256) {
         (uint256 unstakedBpt, uint256 stakedBpt) = bptBalances();
         return
-            BoostedPoolHelper.calcStableOutGivenBptIn(
+            BoostedPoolHelper.queryStableOutGivenBptIn(
                 pool,
                 unstakedBpt + stakedBpt,
                 tokenOut
@@ -134,7 +124,6 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
 
     function calculateExit(uint256 requestedAmountOut)
         internal
-        view
         override
         returns (
             uint8 kind,
@@ -167,7 +156,7 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         );
 
         uint256 amountInAvailable = unstakedBPT + stakedBPT;
-        uint256 amountInGivenOut = BoostedPoolHelper.calcBptInGivenStableOut(
+        uint256 amountInGivenOut = BoostedPoolHelper.queryBptInGivenStableOut(
             pool,
             tokenOut,
             requestedAmountOut
@@ -185,7 +174,7 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         if (isFullExit) {
             kind = uint8(IVault.SwapKind.GIVEN_IN);
             amountIn = unstakedBPT + stakedBPT;
-            amountOut = BoostedPoolHelper.calcStableOutGivenBptIn(
+            amountOut = BoostedPoolHelper.queryStableOutGivenBptIn(
                 pool,
                 amountIn,
                 tokenOut
@@ -200,31 +189,11 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         }
     }
 
-    function _debugPrices() public view returns (uint256, uint256) {
-        address[] memory stableTokens = BoostedPoolHelper.findStableTokens(
-            pool
-        );
-
-        uint256 price1 = BoostedPoolHelper.calcPrice(
-            pool,
-            stableTokens[0],
-            stableTokens[1]
-        );
-
-        uint256 price2 = BoostedPoolHelper.calcPrice(
-            pool,
-            stableTokens[0],
-            stableTokens[2]
-        );
-
-        return (price1, price2);
-    }
-
-    function _balanceNominal(uint256 bptAmount) public view returns (uint256) {
-        uint256 ratio = bptAmount.divDown(
-            IStablePhantomPool(pool).getVirtualSupply()
-        );
-        uint256 nominalValue = BoostedPoolHelper.nominalValue(pool);
-        return ratio.mulDown(nominalValue);
-    }
+    // function _balanceNominal(uint256 bptAmount) public view returns (uint256) {
+    //     uint256 ratio = bptAmount.divDown(
+    //         IStablePhantomPool(pool).getVirtualSupply()
+    //     );
+    //     uint256 nominalValue = BoostedPoolHelper.nominalValue(pool);
+    //     return ratio.mulDown(nominalValue);
+    // }
 }

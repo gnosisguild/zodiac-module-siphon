@@ -4,16 +4,15 @@ pragma solidity ^0.8.0;
 
 import "./Interop.sol";
 
-library VaultHelper {
+library VaultQueryHelper {
     function queryStableOutGivenStableIn(
         address pool,
         address tokenIn,
         uint256 amountIn,
+        address linearPoolLeft,
+        address linearPoolRight,
         address tokenOut
     ) internal returns (uint256) {
-        address linearPoolLeft = findLinearPool(pool, tokenIn);
-        address linearPoolRight = findLinearPool(pool, tokenOut);
-
         address[] memory assets = new address[](4);
         assets[0] = tokenIn;
         assets[1] = linearPoolLeft;
@@ -63,9 +62,10 @@ library VaultHelper {
     function queryStableOutGivenBptIn(
         address pool,
         uint256 amountIn,
+        address linearPool,
         address tokenOut
     ) internal returns (uint256) {
-        address linearPool = findLinearPool(pool, tokenOut);
+        //address linearPool = findLinearPool(pool, tokenOut);
 
         address[] memory assets = new address[](3);
         assets[0] = pool;
@@ -106,10 +106,11 @@ library VaultHelper {
 
     function queryBptInGivenStableOut(
         address pool,
+        address linearPool,
         address tokenOut,
         uint256 amountOut
     ) internal returns (uint256) {
-        address linearPool = findLinearPool(pool, tokenOut);
+        // address linearPool = findLinearPool(pool, tokenOut);
 
         address[] memory assets = new address[](3);
         assets[0] = pool;
@@ -146,27 +147,5 @@ library VaultHelper {
         );
 
         return uint256(limits[0]);
-    }
-
-    function findLinearPool(address pool, address mainToken)
-        internal
-        view
-        returns (address)
-    {
-        (address[] memory tokens, , ) = IVault(IPool(pool).getVault())
-            .getPoolTokens(IPool(pool).getPoolId());
-
-        uint256 bptIndex = IStablePhantomPool(pool).getBptIndex();
-
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (
-                i != bptIndex &&
-                ILinearPool(tokens[i]).getMainToken() == mainToken
-            ) {
-                return tokens[i];
-            }
-        }
-
-        revert("LinearPool: Not found");
     }
 }

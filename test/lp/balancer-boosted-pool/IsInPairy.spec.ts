@@ -120,6 +120,63 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       expect(await adapter.isInParity()).to.equal(true);
     });
+
+    it.only("try it out", async () => {
+      const { vault, pool, dai } = await baseSetup();
+
+      const boostedPoolHelper = await getBoostedPoolHelper();
+
+      const { BigWhale } = await getNamedAccounts();
+
+      const pricesBefore = await boostedPoolHelper.callStatic.calcPrices(
+        pool.address
+      );
+      // const nominalsBefore = await boostedPoolHelper.nominals(pool.address);
+      // console.log(
+      //   "Before",
+      //   nominalsBefore.map((a: any) => a.toString())
+      // );
+      console.log("Prices Before", pricesToReadable(pricesBefore));
+
+      // Inject 200 million in DAI which is enough to move the price
+
+      await investInPool(
+        dai.address,
+        BigNumber.from("200000000000000000000000000")
+      );
+
+      const pricesAfter = await boostedPoolHelper.callStatic.calcPrices(
+        pool.address
+      );
+      // const nominalsAfter = await boostedPoolHelper.nominals(pool.address);
+      // console.log(
+      //   "AFTER",
+      //   nominalsAfter.map((a: any) => a.toString())
+      // );
+      console.log("PRICES AFTER", pricesToReadable(pricesAfter));
+
+      const tetherOutFromDai = await boostedPoolHelper.callStatic.calcInOut(
+        pool.address,
+        DAI_ADDRESS,
+        TETHER_ADDRESS
+      );
+
+      const usdcOutFromDai = await boostedPoolHelper.callStatic.calcInOut(
+        pool.address,
+        DAI_ADDRESS,
+        USDC_ADDRESS
+      );
+
+      console.log(
+        "Tetherfromdai ",
+        tetherOutFromDai.div(BigNumber.from("1000000000000000000")).toString()
+      );
+
+      console.log(
+        "usdcfromdai ",
+        usdcOutFromDai.div(BigNumber.from("1000000000000000000")).toString()
+      );
+    });
   });
 });
 
@@ -143,4 +200,20 @@ function priceToReadable(price: BigNumber): string {
 
 function countBasisPoints(bn: BigNumber): number {
   return bn.div(BigNumber.from("100000000000000")).toNumber();
+}
+
+async function getBoostedPoolHelper() {
+  const BoostedPoolHelper = await deployments.get("BoostedPoolHelper");
+  const LinearPoolHelper = await deployments.get("LinearPoolHelper");
+  const Utils = await deployments.get("Utils");
+
+  const Helper = await hre.ethers.getContractFactory("BoostedPoolHelperMock", {
+    libraries: {
+      BoostedPoolHelper: BoostedPoolHelper.address,
+      LinearPoolHelper: LinearPoolHelper.address,
+      Utils: Utils.address,
+    },
+  });
+  const helper = await Helper.deploy();
+  return helper;
 }

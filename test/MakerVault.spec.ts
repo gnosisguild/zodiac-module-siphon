@@ -9,7 +9,7 @@ const expectedRatio = BigNumber.from(4169926777240047741642011399n);
 const expectedDelta = BigNumber.from(2479023057692998402742223n);
 const [user] = waffle.provider.getWallets();
 
-describe("DP: Maker", async () => {
+describe.skip("DP: Maker", async () => {
   const baseSetup = deployments.createFixture(async () => {
     await deployments.fixture();
     const urn = 123;

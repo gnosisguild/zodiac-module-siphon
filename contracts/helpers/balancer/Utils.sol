@@ -68,8 +68,8 @@ library Utils {
     ) public view returns (uint256) {
         return
             FixedPoint.divDown(
-                inferAndUpscale(amount2, token2),
-                inferAndUpscale(amount1, token1)
+                inferAndUpscale(amount1, token1),
+                inferAndUpscale(amount2, token2)
             );
     }
 

@@ -7,44 +7,45 @@ import "../../lib/balancer/FixedPoint.sol";
 
 import "./LinearPool.sol";
 import "./StablePhantomPool.sol";
+import "./VaultQuery.sol";
 
 library BoostedPoolHelper {
     using FixedPoint for uint256;
 
-    function nominalValue(address pool) external view returns (uint256) {
-        (
-            address[] memory linearPools,
-            uint256[] memory linearBalances
-        ) = findLinearPools(pool);
-        uint256 total;
-        for (uint256 i = 0; i < linearPools.length; i++) {
-            total += LinearPoolHelper.nominalValue(
-                linearPools[i],
-                linearBalances[i]
+    //  function nominalValue(address pool) external view returns (uint256) {
+    //     (
+    //         address[] memory linearPools,
+    //         uint256[] memory linearBalances
+    //     ) = findLinearPools(pool);
+    //     uint256 total;
+    //     for (uint256 i = 0; i < linearPools.length; i++) {
+    //         total += LinearPoolHelper.nominalValue(
+    //             linearPools[i],
+    //             linearBalances[i]
+    //         );
+    //     }
+
+    //     return total;
+    // }
+
+    function queryStableOutGivenStableIn(
+        address pool,
+        address tokenIn,
+        uint256 amountIn,
+        address tokenOut
+    ) public returns (uint256) {
+        address linearPoolLeft = findLinearPool(pool, tokenIn);
+        address linearPoolRight = findLinearPool(pool, tokenOut);
+
+        return
+            VaultQueryHelper.queryStableOutGivenStableIn(
+                pool,
+                tokenIn,
+                amountIn,
+                linearPoolLeft,
+                linearPoolRight,
+                tokenOut
             );
-        }
-
-        return total;
-    }
-
-    function nominals(address pool)
-        external
-        view
-        returns (address[] memory, uint256[] memory)
-    {
-        (
-            address[] memory linearPools,
-            uint256[] memory linearBalances
-        ) = findLinearPools(pool);
-        uint256[] memory result = new uint256[](linearPools.length);
-        for (uint256 i = 0; i < linearPools.length; i++) {
-            result[i] = LinearPoolHelper.nominalValue(
-                linearPools[i],
-                linearBalances[i]
-            );
-        }
-
-        return (linearPools, result);
     }
 
     // Computing from LinearPoolLeft MainToken (e.g., a stable coint)
@@ -91,6 +92,24 @@ library BoostedPoolHelper {
     // Computing from BoostedPool Bpt
     // To -> LinearPool Bpt
     // To -> LinearPool MainToken
+    function queryStableOutGivenBptIn(
+        address pool,
+        uint256 amountIn,
+        address tokenOut
+    ) public returns (uint256) {
+        address linearPool = findLinearPool(pool, tokenOut);
+        return
+            VaultQueryHelper.queryStableOutGivenBptIn(
+                pool,
+                amountIn,
+                linearPool,
+                tokenOut
+            );
+    }
+
+    // Computing from BoostedPool Bpt
+    // To -> LinearPool Bpt
+    // To -> LinearPool MainToken
     function calcStableOutGivenBptIn(
         address pool,
         uint256 amountIn,
@@ -115,6 +134,21 @@ library BoostedPoolHelper {
         );
 
         return amountOut;
+    }
+
+    function queryBptInGivenStableOut(
+        address pool,
+        address tokenOut,
+        uint256 amountOut
+    ) public returns (uint256) {
+        address linearPool = findLinearPool(pool, tokenOut);
+        return
+            VaultQueryHelper.queryBptInGivenStableOut(
+                pool,
+                linearPool,
+                tokenOut,
+                amountOut
+            );
     }
 
     function calcBptInGivenStableOut(
@@ -144,12 +178,12 @@ library BoostedPoolHelper {
         view
         returns (uint256)
     {
-        return LinearPoolHelper.calcMaxMainOut(findLinearPool(pool, tokenOut));
+        address linearPool = findLinearPool(pool, tokenOut);
+        return LinearPoolHelper.calcMaxMainOut(linearPool);
     }
 
     function calcPrices(address pool)
         public
-        view
         returns (address[] memory, uint256[] memory)
     {
         (address[] memory tokens, uint256[] memory balances) = nominalBalances(
@@ -167,7 +201,7 @@ library BoostedPoolHelper {
         for (uint256 i = 0; i < prices.length; i++) {
             prices[i] = (i == min)
                 ? FixedPoint.ONE
-                : calcPrice(pool, tokens[min], tokens[i]);
+                : queryPrice(pool, tokens[min], tokens[i]);
         }
 
         return (tokens, prices);
@@ -186,7 +220,31 @@ library BoostedPoolHelper {
             stable2
         );
 
-        return Utils.price(stable1, amountIn, stable2, amountOut);
+        return
+            FixedPoint.divDown(
+                Utils.inferAndUpscale(amountIn, stable1),
+                Utils.inferAndUpscale(amountOut, stable2)
+            );
+    }
+
+    function queryPrice(
+        address pool,
+        address stable1,
+        address stable2
+    ) public returns (uint256) {
+        uint256 amountIn = 1000 * 10**ERC20(stable1).decimals();
+        uint256 amountOut = queryStableOutGivenStableIn(
+            pool,
+            stable1,
+            amountIn,
+            stable2
+        );
+
+        return
+            FixedPoint.divDown(
+                Utils.inferAndUpscale(amountIn, stable1),
+                Utils.inferAndUpscale(amountOut, stable2)
+            );
     }
 
     function findLinearPools(address pool)
@@ -225,18 +283,6 @@ library BoostedPoolHelper {
         revert("findLinearPool: Not found");
     }
 
-    function findStableTokens(address pool)
-        public
-        view
-        returns (address[] memory)
-    {
-        (address[] memory linearPools, ) = findLinearPools(pool);
-        for (uint256 i = 0; i < linearPools.length; i++) {
-            linearPools[i] = ILinearPool(linearPools[i]).getMainToken();
-        }
-        return linearPools;
-    }
-
     function nominalBalances(address _pool)
         private
         view
@@ -251,9 +297,8 @@ library BoostedPoolHelper {
         balances = new uint256[](linearPools.length);
         for (uint256 i = 0; i < balances.length; i++) {
             stables[i] = ILinearPool(linearPools[i]).getMainToken();
-            balances[i] = LinearPoolHelper.nominalValue(
-                linearPools[i],
-                linearBalances[i]
+            balances[i] = linearBalances[i].mulDown(
+                ILinearPool(linearPools[i]).getRate()
             );
         }
     }

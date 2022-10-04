@@ -67,7 +67,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
+      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -131,7 +131,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
+      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -181,7 +181,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
+      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -242,7 +242,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
+      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -304,7 +304,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247132796917752772752");
+      const adapterLiquidity = BigNumber.from("2029247133529550079673766");
       const daiBalanceInPool = BigNumber.from("7587123402631046351019170");
 
       // Avatar has zero DAI

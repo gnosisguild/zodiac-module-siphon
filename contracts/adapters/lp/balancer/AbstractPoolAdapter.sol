@@ -44,16 +44,15 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return tokenOut;
     }
 
-    function balance() public view virtual override returns (uint256);
+    function balance() public virtual override returns (uint256);
 
-    function canWithdraw() external view override returns (bool) {
+    function canWithdraw() external override returns (bool) {
         // we should make sure the pool has at least 1M nomimal value?
         return isOldEnough() && isInParity();
     }
 
     function withdrawalInstructions(uint256 requestedAmountOut)
         external
-        view
         override
         returns (Transaction[] memory)
     {
@@ -79,7 +78,7 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return result;
     }
 
-    function isInParity() public view virtual returns (bool);
+    function isInParity() public virtual returns (bool);
 
     function isOldEnough() public view returns (bool) {
         (, , uint256 lastModifiedBlock) = IVault(vault).getPoolTokens(
@@ -114,7 +113,6 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function calculateExit(uint256 requestedAmountOut)
         internal
-        view
         virtual
         returns (
             uint8 kind,

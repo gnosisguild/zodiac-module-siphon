@@ -61,7 +61,7 @@ const deploy: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  await deploy("VaultHelper", {
+  await deploy("VaultQueryHelper", {
     from: deployer,
     args: [],
     log: true,
