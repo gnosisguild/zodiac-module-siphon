@@ -105,11 +105,11 @@ contract BoostedPoolHelperMock {
         return BoostedPoolHelper.findLinearPool(pool, mainToken);
     }
 
-    function effectiveStableBalance(address pool, address tokenOut)
+    function liquidStableBalance(address pool, address tokenOut)
         public
         view
         returns (uint256)
     {
-        return BoostedPoolHelper.effectiveStableBalance(pool, tokenOut);
+        return BoostedPoolHelper.liquidStableBalance(pool, tokenOut);
     }
 }

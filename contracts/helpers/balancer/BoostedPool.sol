@@ -258,12 +258,12 @@ library BoostedPoolHelper {
         }
     }
 
-    function effectiveStableBalance(address pool, address stable)
+    function liquidStableBalance(address pool, address stable)
         public
         view
         returns (uint256)
     {
         address linearPool = findLinearPool(pool, stable);
-        return LinearPoolHelper.effectiveMainBalance(linearPool);
+        return LinearPoolHelper.liquidStableBalance(linearPool);
     }
 }

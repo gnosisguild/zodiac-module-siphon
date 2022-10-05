@@ -131,28 +131,17 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
             uint256 amountOut
         )
     {
-        // GIVEN_IN
-        // If we are performing a GIVEN_IN batchSwap and wanted to apply a 1% slippage tolerance,
-        // we would multiple our negative assetDeltas by 0.99. We do not need to modify
-        // our positive amounts because we know the exact amount we are putting in.
-        // GIVEN_OUT
-        // If we are performing a GIVEN_OUT batchSwap and wanted to apply a 1% slippage tolerance,
-        // we would multiple our positive assetDeltas by 1.01. We do not need to modify
-        // our negative amounts because we know the exact amount we are getting out.
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
         // For BoostedPools there's a difference between the nominal balance and
-        // withdrawable balance
-        // This is dictated by LinearPools, where most of the liquidity is held in AAVE's
-        // aTokens. The actual stable will outnumbered vs AAVE's yield bearing equivalents.
-        // The equilibirum is to be maintaned by arbers. therefore we are limited on the
-        // batch swap to warever is readily available in stables
-        // For example, even tho a position is 20M, we might only be able to withdraw 5M
-        // In principle, some minutes later, our 15M position will be again good for
-        // another 5M withdraw
+        // liquid balance
+        // This is dictated by LinearPools, where a good part of liquidity is held in
+        // in wrapped tokens (e.g. AAVE's waToken)
+        // The equilibirum is to be maintaned by external arbers. therefore we are capped
+        // by what is promptly available as stable token
         requestedAmountOut = Math.min(
             requestedAmountOut,
-            BoostedPoolHelper.effectiveStableBalance(pool, tokenOut)
+            BoostedPoolHelper.liquidStableBalance(pool, tokenOut)
         );
 
         uint256 amountInAvailable = unstakedBPT + stakedBPT;
@@ -169,8 +158,8 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
             );
 
         // Default mode is GIVEN_OUT, retrieving the exactly requested liquidity
-        // But if we are close, then we do GIVEN_IN
-        // we just exit everything, and get warever was out
+        // But if we are close full withdrawal, then we do GIVEN_IN and fully exit
+        // everything
         if (isFullExit) {
             kind = uint8(IVault.SwapKind.GIVEN_IN);
             amountIn = unstakedBPT + stakedBPT;
@@ -188,12 +177,4 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
             require(amountIn <= unstakedBPT + stakedBPT, "Invariant");
         }
     }
-
-    // function _balanceNominal(uint256 bptAmount) public view returns (uint256) {
-    //     uint256 ratio = bptAmount.divDown(
-    //         IStablePhantomPool(pool).getVirtualSupply()
-    //     );
-    //     uint256 nominalValue = BoostedPoolHelper.nominalValue(pool);
-    //     return ratio.mulDown(nominalValue);
-    // }
 }

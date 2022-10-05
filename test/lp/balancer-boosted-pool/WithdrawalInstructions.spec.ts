@@ -313,10 +313,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       expect(
-        await boostedPoolHelper.effectiveStableBalance(
-          pool.address,
-          dai.address
-        )
+        await boostedPoolHelper.liquidStableBalance(pool.address, dai.address)
       ).to.equal(daiBalanceInPool);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
@@ -385,10 +382,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       );
 
       expect(
-        await boostedPoolHelper.effectiveStableBalance(
-          pool.address,
-          dai.address
-        )
+        await boostedPoolHelper.liquidStableBalance(pool.address, dai.address)
       ).to.equal(daiBalanceInPool);
 
       // request for more than actually lives in the linearPool.
