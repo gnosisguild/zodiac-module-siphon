@@ -29,7 +29,7 @@ abstract contract MultisendEncoder {
                 data = abi.encodePacked(
                     data,
                     abi.encodePacked(
-                        uint8(txs[i].operation), /// operation as a uint8.
+                        uint8(txs[i].operation), /// operation as an uint8.
                         txs[i].to, /// to as an address.
                         txs[i].value, /// value as an uint256.
                         uint256(txs[i].data.length), /// data length as an uint256.
