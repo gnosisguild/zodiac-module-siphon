@@ -113,7 +113,8 @@ contract Siphon is Module, MultisendEncoder {
             revert WithdrawalBlocked();
         }
 
-        uint256 prevBalance = IERC20(lp.asset()).balanceOf(avatar);
+        address asset = lp.asset();
+        uint256 prevBalance = IERC20(asset).balanceOf(avatar);
         uint256 nextBalance;
         uint256 requestedAmountOut = dp.delta();
         uint256 actualAmountOut;
@@ -134,7 +135,7 @@ contract Siphon is Module, MultisendEncoder {
             revert WithdrawalBlocked();
         }
 
-        nextBalance = IERC20(lp.asset()).balanceOf(avatar);
+        nextBalance = IERC20(asset).balanceOf(avatar);
         actualAmountOut = nextBalance - prevBalance;
 
         if (actualAmountOut == 0) {
