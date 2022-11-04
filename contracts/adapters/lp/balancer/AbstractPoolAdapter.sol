@@ -15,7 +15,7 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
     address public tokenOut;
 
     uint256 public parityTolerance = basisPoints(20); // default to 20 basis points.
-    uint256 public minBlockAge = 5; // default to 5 blocks.
+    uint256 public minBlockAge = 1; // default to 1 blocks.
 
     function setUp(bytes memory initParams) public override initializer {
         (
