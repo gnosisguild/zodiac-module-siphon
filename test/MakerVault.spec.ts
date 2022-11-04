@@ -9,7 +9,7 @@ const expectedRatio = BigNumber.from(4169926777240047741642011399n);
 const expectedDelta = BigNumber.from(2479023057692998402742223n);
 const [user] = waffle.provider.getWallets();
 
-describe.skip("DP: Maker", async () => {
+describe("DP: Maker", async () => {
   const baseSetup = deployments.createFixture(async () => {
     await deployments.fixture();
     const urn = 123;
@@ -134,7 +134,7 @@ describe.skip("DP: Maker", async () => {
   });
 
   describe("paymentInstructions()", async () => {
-    it("Correctly encodes payment instructions", async () => {
+    it.skip("Correctly encodes payment instructions", async () => {
       const { adapter, dsProxy, dai } = await baseSetup();
       const [allow, transfer] = await adapter.paymentInstructions(
         expectedDelta

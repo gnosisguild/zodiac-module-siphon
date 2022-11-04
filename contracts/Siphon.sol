@@ -101,19 +101,8 @@ contract Siphon is Module, MultisendEncoder {
         IDebtPosition dp = IDebtPosition(tubes[tube].dp);
         ILiquidityPosition lp = ILiquidityPosition(tubes[tube].lp);
 
-        uint256 triggerRatio = dp.ratioTrigger();
-        if (triggerRatio == 0) {
-            revert TriggerRatioNotSet();
-        }
-
-        uint256 ratio = dp.ratio();
-        if (ratio > triggerRatio) {
+        if (dp.needsRebalancing() == false) {
             revert DebtPositionIsHealthy();
-        }
-
-        uint256 targetRatio = dp.ratioTarget();
-        if (targetRatio < triggerRatio) {
-            revert TargetRatioNotSet();
         }
 
         if (lp.balance() == 0) {

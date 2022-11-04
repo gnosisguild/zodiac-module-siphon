@@ -82,8 +82,8 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     bytes32 public ilk;
 
-    uint256 public override ratioTarget;
-    uint256 public override ratioTrigger;
+    uint256 public ratioTarget;
+    uint256 public ratioTrigger;
     uint256 public vault;
 
     constructor(
@@ -176,7 +176,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     // @dev Sets the target callateralization ratio for the vault.
     // @param _ratio Target collateralization ratio for the vault.
     // @notice Can only be called by owner.
-    function setRatioTarget(uint256 _ratio) external override onlyOwner {
+    function setRatioTarget(uint256 _ratio) external onlyOwner {
         ratioTarget = _ratio;
         emit SetRatioTarget(ratioTarget);
     }
@@ -184,7 +184,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     // @dev Sets the collateralization ratio below which debt repayment can be triggered.
     // @param _ratio The ratio below which debt repayment can be triggered.
     // @notice Can only be called by owner.
-    function setRatioTrigger(uint256 _ratio) external override onlyOwner {
+    function setRatioTrigger(uint256 _ratio) external onlyOwner {
         ratioTrigger = _ratio;
         emit SetRatioTrigger(ratioTrigger);
     }
@@ -226,6 +226,18 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         // d = (c * s * l) / r
         uint256 debtTarget = (((ink * spot) / RAY) * mat) / ratioTarget;
         amount = debt - debtTarget;
+    }
+
+    // @dev Returns whether the current debt positions needs rebelance.
+    function needsRebalancing() public view override returns (bool) {
+        require(
+            ratioTrigger != 0 && ratioTarget != 0 && ratioTrigger < ratioTarget,
+            "DebtPosition: Incorrect Configuration"
+        );
+
+        uint256 currentRatio = ratio();
+
+        return currentRatio < ratioTrigger;
     }
 
     // @dev Returns the call data to repay debt on the vault.
