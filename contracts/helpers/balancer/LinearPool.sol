@@ -113,11 +113,7 @@ library LinearPoolHelper {
         return Utils.downscaleUp(amountIn, scalingFactors[indexIn]);
     }
 
-    function liquidStableBalance(address pool)
-        external
-        view
-        returns (uint256)
-    {
+    function liquidStableBalance(address pool) external view returns (uint256) {
         (uint256[] memory balances, , , ) = query(pool);
 
         (uint256 lowerTarget, ) = ILinearPool(pool).getTargets();

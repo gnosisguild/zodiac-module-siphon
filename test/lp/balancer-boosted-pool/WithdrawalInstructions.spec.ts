@@ -136,8 +136,8 @@ describe("LP: Balancer Boosted Pool", async () => {
         adapterLiquidity
       );
 
-      // withdrawing slightly less than available, should yield full exit
-      const requestedAmountOut = adapterLiquidity.div(1000).mul(999);
+      // withdrawing slightly more than available, should yield full exit
+      const requestedAmountOut = adapterLiquidity.div(1000).mul(1001);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
         requestedAmountOut
@@ -163,7 +163,8 @@ describe("LP: Balancer Boosted Pool", async () => {
       await expect(await gauge.balanceOf(avatar.address)).to.equal(0);
 
       const actualAmountOut = await dai.balanceOf(avatar.address);
-      expect(actualAmountOut).to.gte(requestedAmountOut);
+      expect(actualAmountOut).to.gte(requestedAmountOut.div(100).mul(99));
+      expect(actualAmountOut).to.lt(requestedAmountOut);
     });
 
     it("Withdrawing with partial unstake - inGivenOut", async () => {
