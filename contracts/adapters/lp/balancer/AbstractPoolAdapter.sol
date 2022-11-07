@@ -61,9 +61,7 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
     {
         (uint256 unstakedBalance, ) = bptBalances();
 
-        (uint8 kind, uint256 amountIn, uint256 amountOut) = calculateExit(
-            requestedAmountOut
-        );
+        uint256 amountIn = calculateExit(requestedAmountOut);
 
         uint256 amountToUnstake = amountIn > unstakedBalance
             ? amountIn - unstakedBalance
@@ -73,10 +71,10 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         if (amountToUnstake > 0) {
             result = new Transaction[](2);
             result[0] = encodeUnstake(amountToUnstake);
-            result[1] = encodeExit(kind, amountIn, amountOut);
+            result[1] = encodeExit(amountIn);
         } else {
             result = new Transaction[](1);
-            result[0] = encodeExit(kind, amountIn, amountOut);
+            result[0] = encodeExit(amountIn);
         }
         return result;
     }
@@ -108,20 +106,16 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
             });
     }
 
-    function encodeExit(
-        uint8 kind,
-        uint256 amountIn,
-        uint256 amountOut
-    ) internal view virtual returns (Transaction memory);
+    function encodeExit(uint256 amountIn)
+        internal
+        view
+        virtual
+        returns (Transaction memory);
 
     function calculateExit(uint256 requestedAmountOut)
         internal
         virtual
-        returns (
-            uint8 kind,
-            uint256 amountIn,
-            uint256 amountOut
-        );
+        returns (uint256 amountOut);
 
     function bptBalances()
         public
