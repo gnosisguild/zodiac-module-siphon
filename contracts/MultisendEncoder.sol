@@ -37,6 +37,7 @@ abstract contract MultisendEncoder {
                     )
                 );
             }
+            data = abi.encodeWithSignature("multiSend(bytes)", data);
             operation = Enum.Operation.DelegateCall;
         } else {
             to = txs[0].to;
