@@ -19,7 +19,7 @@ import {
 import { setup, fundAvatar } from "./setup";
 
 describe("LP: Balancer Stable Pool", async () => {
-  describe("withdrawalInstructions", async () => {
+  describe.skip("withdrawalInstructions", async () => {
     let baseSetup: any;
 
     before(async () => {

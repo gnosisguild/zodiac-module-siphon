@@ -58,26 +58,17 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             );
     }
 
-    function encodeExit(
-        uint8 kind,
-        uint256 amountIn,
-        uint256 amountOut
-    ) internal view override returns (Transaction memory) {
+    function encodeExit(uint256 amountIn)
+        internal
+        view
+        override
+        returns (Transaction memory)
+    {
         bytes32 poolId = IPool(pool).getPoolId();
         (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
         uint256 tokenOutIndex = Utils.indexOf(tokens, tokenOut);
         uint256[] memory amountsOut = new uint256[](tokens.length);
-        amountsOut[tokenOutIndex] = amountOut;
-
-        bytes memory userData;
-        if (
-            IVault.ExitKind(kind) ==
-            IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT
-        ) {
-            userData = abi.encode(kind, amountIn, tokenOutIndex);
-        } else {
-            userData = abi.encode(kind, amountsOut, amountIn);
-        }
+        //amountsOut[tokenOutIndex] = amountOut;
 
         return
             Transaction({
@@ -91,7 +82,11 @@ contract StablePoolAdapter is AbstractPoolAdapter {
                     IVault.ExitPoolRequest({
                         assets: tokens,
                         minAmountsOut: amountsOut,
-                        userData: userData,
+                        userData: abi.encode(
+                            IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                            amountIn,
+                            tokenOutIndex
+                        ),
                         toInternalBalance: false
                     })
                 ),
@@ -103,11 +98,7 @@ contract StablePoolAdapter is AbstractPoolAdapter {
         internal
         view
         override
-        returns (
-            uint8 kind,
-            uint256 amountIn,
-            uint256 amountOut
-        )
+        returns (uint256 amountIn)
     {
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
@@ -118,30 +109,6 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             requestedAmountOut
         );
 
-        bool isFullExit = amountInGivenOut >
-            FixedPoint.mulDown(
-                amountInAvailable,
-                FixedPoint.ONE - basisPoints(100)
-            );
-
-        if (isFullExit) {
-            kind = uint8(IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT);
-            amountIn = unstakedBPT + stakedBPT;
-            amountOut = FixedPoint.mulDown(
-                StablePoolHelper.calcTokenOutGivenBptIn(
-                    pool,
-                    amountIn,
-                    tokenOut
-                ),
-                FixedPoint.ONE - basisPoints(50)
-            );
-        } else {
-            kind = uint8(IVault.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT);
-            amountIn = FixedPoint.mulDown(
-                amountInGivenOut,
-                FixedPoint.ONE + basisPoints(50)
-            );
-            amountOut = requestedAmountOut;
-        }
+        return Math.min(amountInAvailable, amountInGivenOut);
     }
 }
