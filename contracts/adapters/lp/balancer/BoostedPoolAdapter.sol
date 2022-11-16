@@ -112,6 +112,17 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
     {
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
+        // For BoostedPools there's a difference between the nominal balance and
+        // liquid balance
+        // This is dictated by LinearPools, where a good part of liquidity is held in
+        // in wrapped tokens (e.g. AAVE's waToken)
+        // The equilibirum is to be maintaned by external arbers. therefore we are capped
+        // by what is promptly available as stable token
+        requestedAmountOut = Math.min(
+            requestedAmountOut,
+            BoostedPoolHelper.liquidStableBalance(pool, tokenOut)
+        );
+
         uint256 amountInAvailable = unstakedBPT + stakedBPT;
         uint256 amountInGivenOut = BoostedPoolHelper.queryBptInGivenStableOut(
             pool,
