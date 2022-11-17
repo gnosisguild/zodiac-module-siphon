@@ -10,7 +10,7 @@ If you have any questions about Zodiac, join the [Gnosis Guild Discord](https://
 
 ### About the Siphon Module
 
-This module is exposes a public interface which allows anyone to trigger an Avatar to withdraw from a designated luiquidity position in order to pay down some of its debt in a designated debt position, thereby improving the health of the position.
+This module exposes a public interface which allows anyone to trigger an Avatar to withdraw from a designated liquidity position in order to pay down some of its debt in a designated debt position, thereby improving the health of the position.
 
 The owner of the module can set target and trigger collateral ratios for the debt position. If the collateral ratio of the debt position falls below the trigger ratio, anyone can call `siphon()` to trigger the withdrawal of enough capital from the liquidity position to return the debt position to the target ratio.
 
@@ -29,7 +29,7 @@ Siphon also exposes some MEV in the parity and slippage tolerance defined by the
 
 - Deploy a debt position adapter along with a liquidity position adapter from which asset to pay down debt can be drawn.
 - Set a target collateral ratio and a trigger collateral ratio on the debt position.
-- Set parity and slippage tolerance for you liquidity position; higher means exposing more MEV.
+- Set parity and slippage tolerance for your liquidity position; higher means exposing more MEV.
 - Connect [a tube](https://youtu.be/WqWuwZElgDg) between the debt position and the liquidity position with `connectTube()`.
 - Monitor `ratio()` and `ratioTrigger()` on the debt adapter and call `siphon()` on the Siphon module whenever the former falls below the latter.
 
@@ -41,7 +41,7 @@ Siphon also exposes some MEV in the parity and slippage tolerance defined by the
 
 ### Solidity Compiler
 
-The contracts have been developed with [Solidity 0.8.6](https://github.com/ethereum/solidity/releases/tag/v0.8.6). This version of Solidity made all arithmetic checked by default, therefore eliminating the need for explicit overflow or underflow (or other arithmetic) checks.
+The contracts have been developed with [Solidity 0.8.6](https://github.com/ethereum/solidity/releases/tag/v0.8.6). This version of Solidity made all arithmetic checks by default, therefore eliminating the need for explicit overflow or underflow (or other arithmetic) checks.
 
 ### Security and Liability
 
