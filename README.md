@@ -10,13 +10,14 @@ If you have any questions about Zodiac, join the [Gnosis Guild Discord](https://
 
 ### About the Siphon Module
 
-This module is exposes a public interface which allows anyone to trigger an Avatar to withdraw from a designated luiquidity position in order to pay down some of its debt in a designated debt position, thereby improving the health of the position.
+This module exposes a public interface that allows anyone to trigger an Avatar to withdraw from a designated liquidity position to pay down some of its debt in a designated debt position, thereby improving the health of the position.
 
-The owner of the module can set target and trigger collateral ratios for the debt position. If the collateral ratio of the debt position falls below the trigger ratio, anyone can call `siphon()` to trigger the withdrawal of enough capital from the liquidity position to return the debt position to the target ratio.
+The module owner can set a target and trigger collateral ratios for the debt position. If the collateral ratio of the debt position falls below the trigger ratio, anyone can call `siphon()` to trigger the withdrawal of enough capital from the liquidity position to return the debt position to the target ratio.
 
-This contract should be used in concert with a bot which periodicially queries `ratio()` on the debt position adapter and calls `siphon()` on the Siphon module any time `ratio()` falls below the current `ratioTarget()`.
+This contract should be used in concert with a bot that periodically queries `ratio()` on the debt position adapter and calls `siphon()` on the Siphon module any time `ratio()` falls below the current `ratioTarget()`.
 
-Siphon also exposes some MEV in the parity and slippage tolerance defined by the user in the liquidity adapter. Setting these variables relatively higher provides an incentive for those seeking to capture MEV to call `siphon()` on the user's behalf, whenever `ratio()` falls below `ratioTarget()`. This could be used in concert with the bot mentioned above to add a layer of redundancy to the monitoring payment of unhealthy debt positions.
+Siphon also exposes some MEV in the parity and slippage tolerance defined by the user in the liquidity adapter. Setting these variables relatively higher provides an incentive for those seeking to capture MEV to call `siphon()` on the user's behalf whenever `ratio()` falls below `ratioTarget()`. This could be used in concert with the bot mentioned above to add a layer of redundancy to the monitoring payment of unhealthy debt positions.
+
 
 ### Features
 
@@ -41,11 +42,11 @@ Siphon also exposes some MEV in the parity and slippage tolerance defined by the
 
 ### Solidity Compiler
 
-The contracts have been developed with [Solidity 0.8.6](https://github.com/ethereum/solidity/releases/tag/v0.8.6). This version of Solidity made all arithmetic checked by default, therefore eliminating the need for explicit overflow or underflow (or other arithmetic) checks.
+The contracts have been developed with [Solidity 0.8.6](https://github.com/ethereum/solidity/releases/tag/v0.8.6). This version of Solidity checked all arithmetic by default, eliminating the need for explicit overflow or underflow (or other arithmetic) checks.
 
 ### Security and Liability
 
-All contracts are WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+All contracts are WITHOUT ANY WARRANTY, without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
 ### License
 
