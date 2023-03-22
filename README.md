@@ -50,3 +50,9 @@ All contracts are WITHOUT ANY WARRANTY; without even the implied warranty of MER
 ### License
 
 Created under the [LGPL-3.0+ license](LICENSE).
+
+### TODO:
+
+1. missing events
+2. missing natspac
+3. the balancer specific LP adapter could be contained within `contracts/adapters/lp/balancer/*`. However balancer specific helper and lib functions are present in `contracts/lib` and `contracts/helpers`.
