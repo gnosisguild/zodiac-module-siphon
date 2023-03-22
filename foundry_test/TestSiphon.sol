@@ -32,8 +32,8 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
     uint256 constant vault = 28539;
 
     // DP: ADAPTER SPECIFIC
-    uint256 constant ratioTarget = 200;
-    uint256 constant ratioTrigger = 10;
+    uint256 constant ratioTarget = 2003150454495912014922903222;
+    uint256 constant ratioTrigger = 1523150454495912014922903222;
 
     // LP:
     address constant BALANCER_STABLE_POOL_GAUGE =
@@ -65,7 +65,7 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
         // DP:SET UP - END
 
         // LP: SET UP - START
-        deal(BALANCER_STABLE_POOL, address(avatar), 1_000 ether, true); // makes the avatar a LP in the balancer pool
+        deal(BALANCER_STABLE_POOL, address(avatar), 1_000_000 ether, true); // makes the avatar a LP in the balancer pool
         stablePoolAdapter = new StablePoolAdapter(
             adapterOwner, // can connect anf disconnect tubes
             address(avatar), // owner of the balancer pool
@@ -74,7 +74,7 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
             DAI
         );
         stablePoolAdapter.setMinBlockAge(0);
-        stablePoolAdapter.setParityTolerance(10_000);
+        stablePoolAdapter.setParityTolerance(100);
         // LP: SET UP - END
         // 15213468754474595452416750
         // 1000000000000000000000000
@@ -93,9 +93,12 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
             address(stablePoolAdapter)
         );
 
-        emit log_named_uint("initial delta", makerVaultAdapter.delta());
+        emit log_named_uint("Ratio Trigger", makerVaultAdapter.ratioTrigger());
+        emit log_named_uint("Initial ratio", makerVaultAdapter.ratio());
+        emit log_named_uint("Initial delta", makerVaultAdapter.delta());
 
         siphon.siphon("testTube1");
-        emit log_named_uint("Delta after Siphon", makerVaultAdapter.delta());
+        emit log_named_uint("Ratio after siphon", makerVaultAdapter.ratio());
+        emit log_named_uint("Delta after siphon", makerVaultAdapter.delta());
     }
 }
