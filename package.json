@@ -56,6 +56,7 @@
     "typescript": "4.1.3"
   },
   "dependencies": {
+    "@chainlink/contracts": "^0.6.1",
     "@gnosis.pm/mock-contract": "4.0.0",
     "@gnosis.pm/safe-contracts": "1.3.0",
     "@gnosis.pm/zodiac": "1.0.1",
