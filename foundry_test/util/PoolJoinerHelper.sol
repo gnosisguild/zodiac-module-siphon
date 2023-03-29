@@ -39,28 +39,6 @@ abstract contract PoolJoinerHelper is Test {
             0 //Transaction.Operation.Call
         );
 
-        avatar.execTransactionFromModule(
-            payable(address(token)),
-            0,
-            abi.encodeWithSignature(
-                "approve(address,uint256)",
-                address(pool),
-                type(uint256).max
-            ),
-            0 //Transaction.Operation.Call
-        );
-
-        avatar.execTransactionFromModule(
-            payable(address(token)),
-            0,
-            abi.encodeWithSignature(
-                "approve(address,uint256)",
-                address(this),
-                type(uint256).max
-            ),
-            0 //Transaction.Operation.Call
-        );
-
         IVault.JoinPoolRequest memory request = joinPoolRequest(
             IVault(pool.getVault()),
             pool,

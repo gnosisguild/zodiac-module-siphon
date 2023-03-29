@@ -97,6 +97,11 @@ contract TestSiphon is Test, SetupMakerVaultAdapter, PoolJoinerHelper {
     }
 
     function test_connect_tube() public {
+        assertGt(
+            IERC20(address(balancerStablePool)).balanceOf(address(avatar)),
+            0,
+            "avatar should have some balance in the pool"
+        );
         assertEq(
             siphon.isConnected("testTube1"),
             false,
@@ -130,7 +135,7 @@ contract TestSiphon is Test, SetupMakerVaultAdapter, PoolJoinerHelper {
         emit log_named_uint("Initial ratio", makerVaultAdapter.ratio());
         emit log_named_uint("Initial delta", makerVaultAdapter.delta());
 
-        siphon.siphon("testTube1");
+        siphon.siphon("testTube2");
 
         emit log_named_uint("Ratio after siphon", makerVaultAdapter.ratio());
         emit log_named_uint("Delta after siphon", makerVaultAdapter.delta());
