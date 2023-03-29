@@ -54,11 +54,9 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return isInParity();
     }
 
-    function withdrawalInstructions(uint256 requestedAmountOut)
-        external
-        override
-        returns (Transaction[] memory)
-    {
+    function withdrawalInstructions(
+        uint256 requestedAmountOut // is 7084244248654866374719538 = 7084244 Eth sized
+    ) external override returns (Transaction[] memory) {
         (uint256 unstakedBalance, ) = bptBalances();
 
         uint256 amountIn = calculateExit(requestedAmountOut);
@@ -91,11 +89,9 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return age >= minBlockAge;
     }
 
-    function encodeUnstake(uint256 amount)
-        internal
-        view
-        returns (Transaction memory)
-    {
+    function encodeUnstake(
+        uint256 amount
+    ) internal view returns (Transaction memory) {
         //0x2e1a7d4d -> "withdraw(uint256)"
         return
             Transaction({
@@ -106,16 +102,13 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
             });
     }
 
-    function encodeExit(uint256 amountIn)
-        internal
-        view
-        virtual
-        returns (Transaction memory);
+    function encodeExit(
+        uint256 amountIn
+    ) internal view virtual returns (Transaction memory);
 
-    function calculateExit(uint256 requestedAmountOut)
-        internal
-        virtual
-        returns (uint256 amountOut);
+    function calculateExit(
+        uint256 requestedAmountOut
+    ) internal virtual returns (uint256 amountOut);
 
     function bptBalances()
         public

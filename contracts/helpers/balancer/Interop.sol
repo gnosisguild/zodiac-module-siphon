@@ -18,11 +18,7 @@ interface IStablePool is IPool {
     function getAmplificationParameter()
         external
         view
-        returns (
-            uint256 value,
-            bool isUpdating,
-            uint256 precision
-        );
+        returns (uint256 value, bool isUpdating, uint256 precision);
 
     function getLastInvariant()
         external
@@ -57,7 +53,9 @@ interface ILinearPool is IPool {
 }
 
 interface IVault {
-    function getPoolTokens(bytes32 poolId)
+    function getPoolTokens(
+        bytes32 poolId
+    )
         external
         view
         returns (
@@ -72,6 +70,20 @@ interface IVault {
         address[] memory assets,
         FundManagement memory funds
     ) external returns (int256[] memory);
+
+    function joinPool(
+        bytes32 poolId,
+        address sender,
+        address recipient,
+        JoinPoolRequest memory request
+    ) external;
+
+    struct JoinPoolRequest {
+        address[] assets;
+        uint256[] maxAmountsIn;
+        bytes userData;
+        bool fromInternalBalance;
+    }
 
     struct BatchSwapStep {
         bytes32 poolId;

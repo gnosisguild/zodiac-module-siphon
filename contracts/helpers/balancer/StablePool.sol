@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "forge-std/Test.sol";
 import "../../lib/balancer/StableMath.sol";
 import "../../lib/balancer/FixedPoint.sol";
 
@@ -96,14 +97,14 @@ library StablePoolHelper {
     }
 
     function calcBptInGivenTokenOut(
-        address pool,
-        address tokenOut,
-        uint256 amountOut
+        address pool, // stable pool
+        address tokenOut, // dai
+        uint256 amountOut // 7084244248654866374719538 = 7084244 Ether scaled
     ) public view returns (uint256) {
         (PoolTokens memory tokens, uint256 amplification) = query(pool);
-        uint256 indexTokenOut = Utils.indexOf(tokens.addresses, tokenOut);
+        uint256 indexTokenOut = Utils.indexOf(tokens.addresses, tokenOut); // 0
 
-        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
+        Utils.upscaleArray(tokens.balances, tokens.scalingFactors); // [7084244248654866374719538]
 
         uint256[] memory amountsOut = new uint256[](tokens.addresses.length);
         amountsOut[indexTokenOut] = amountOut = Utils.upscale(
@@ -111,12 +112,18 @@ library StablePoolHelper {
             tokens.scalingFactors[indexTokenOut]
         );
 
+        require(
+            tokens.balances[indexTokenOut] > amountsOut[0],
+            "poolen maa ha nok peng"
+        );
+
+        // this fails
         uint256 amountIn = StableMath._calcBptInGivenExactTokensOut(
-            amplification,
-            tokens.balances,
-            amountsOut,
-            IPool(pool).totalSupply(),
-            IPool(pool).getSwapFeePercentage()
+            amplification, // ?
+            tokens.balances, //
+            amountsOut, // [7084244248654866374719538]
+            IPool(pool).totalSupply(), // 102022331370229975324074897 = 102022331 Ether scaled
+            IPool(pool).getSwapFeePercentage() // 50000000000000
         );
 
         return amountIn;

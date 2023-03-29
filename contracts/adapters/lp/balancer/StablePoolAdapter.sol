@@ -100,7 +100,7 @@ contract StablePoolAdapter is AbstractPoolAdapter {
         uint256 amountInGivenOut = StablePoolHelper.calcBptInGivenTokenOut(
             pool,
             tokenOut,
-            requestedAmountOut
+            requestedAmountOut // 7084244248654866374719538
         );
 
         return Math.min(amountInAvailable, amountInGivenOut);

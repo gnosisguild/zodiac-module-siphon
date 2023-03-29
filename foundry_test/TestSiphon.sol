@@ -4,16 +4,20 @@ import "forge-std/Test.sol";
 
 import {Siphon} from "contracts/Siphon.sol";
 import {MakerVaultAdapter} from "contracts/adapters/dp/MakerVault.sol";
-import {StablePoolAdapter} from "contracts/adapters/lp/balancer/StablePoolAdapter.sol";
+import {StablePoolAdapter, IERC20} from "contracts/adapters/lp/balancer/StablePoolAdapter.sol";
 import {TestAvatar} from "contracts/test/TestAvatar.sol";
 import {Transaction} from "contracts/Transaction.sol";
 import {DSProxy} from "contracts/test/maker/DssProxy.sol";
+import {IStablePool, IVault} from "contracts/helpers/balancer/Interop.sol";
+import {Utils} from "contracts/helpers/balancer/Utils.sol";
+import {StablePoolHelper} from "contracts/helpers/balancer/StablePool.sol";
 
 import {SetupMakerVaultAdapter} from "foundry_test/util/SetupMakerVaultAdapter.sol";
+import {PoolJoinerHelper} from "foundry_test/util/PoolJoinerHelper.sol";
 
 // uppercase means that this are global contracts used by all CDPs and not specific to our vault
 
-contract TestSiphon is Test, SetupMakerVaultAdapter {
+contract TestSiphon is Test, SetupMakerVaultAdapter, PoolJoinerHelper {
     Siphon siphon;
     TestAvatar avatar;
     MakerVaultAdapter makerVaultAdapter;
@@ -32,14 +36,16 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
     uint256 constant vault = 28539;
 
     // DP: ADAPTER SPECIFIC
-    uint256 constant ratioTarget = 2003150454495912014922903222;
-    uint256 constant ratioTrigger = 1523150454495912014922903222;
+    uint256 constant ratioTarget = 1053150454495912014922903223;
+    uint256 constant ratioTrigger = 1033150454495912014922903222;
 
     // LP:
     address constant BALANCER_STABLE_POOL_GAUGE =
         0x34f33CDaED8ba0E1CEECE80e5f4a73bcf234cfac; // Balancer staBAL3 Gauge Deposit (staBAL3-g...)
     address constant BALANCER_STABLE_POOL =
         0x06Df3b2bbB68adc8B0e302443692037ED9f91b42; // Balancer USD Stable Pool (staBAL3)
+
+    IStablePool balancerStablePool = IStablePool(BALANCER_STABLE_POOL);
 
     function setUp() public {
         vm.selectFork(vm.createFork(vm.envString("MAINNET_RPC_URL")));
@@ -65,7 +71,15 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
         // DP:SET UP - END
 
         // LP: SET UP - START
-        deal(BALANCER_STABLE_POOL, address(avatar), 1_000_000 ether, true); // makes the avatar a LP in the balancer pool
+        // the avatar enters the balancer pool
+        uint256 amountOfDaiToEnterWith = 100_000 ether;
+        joinPool(
+            avatar,
+            balancerStablePool,
+            IERC20(DAI),
+            amountOfDaiToEnterWith
+        );
+
         stablePoolAdapter = new StablePoolAdapter(
             adapterOwner, // can connect anf disconnect tubes
             address(avatar), // owner of the balancer pool
@@ -76,17 +90,18 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
         stablePoolAdapter.setMinBlockAge(0);
         stablePoolAdapter.setParityTolerance(100);
         // LP: SET UP - END
-        // 15213468754474595452416750
-        // 1000000000000000000000000
 
-        // create and setup siphon
+        // create and setup siphon and enable it on the avatar
         siphon = new Siphon(address(this), address(avatar), address(this));
         avatar.setModule(address(siphon));
     }
 
     function test_connect_tube() public {
-        assert(siphon.avatar() == address(avatar));
-
+        assertEq(
+            siphon.isConnected("testTube1"),
+            false,
+            "tube should NOT be connected on start"
+        );
         siphon.connectTube(
             "testTube1",
             address(makerVaultAdapter),
@@ -97,7 +112,26 @@ contract TestSiphon is Test, SetupMakerVaultAdapter {
         emit log_named_uint("Initial ratio", makerVaultAdapter.ratio());
         emit log_named_uint("Initial delta", makerVaultAdapter.delta());
 
+        assertEq(
+            siphon.isConnected("testTube1"),
+            true,
+            "tube should be connected, after connecting it"
+        );
+    }
+
+    function test_siphon() public {
+        siphon.connectTube(
+            "testTube2",
+            address(makerVaultAdapter),
+            address(stablePoolAdapter)
+        );
+
+        emit log_named_uint("Ratio Trigger", makerVaultAdapter.ratioTrigger());
+        emit log_named_uint("Initial ratio", makerVaultAdapter.ratio());
+        emit log_named_uint("Initial delta", makerVaultAdapter.delta());
+
         siphon.siphon("testTube1");
+
         emit log_named_uint("Ratio after siphon", makerVaultAdapter.ratio());
         emit log_named_uint("Delta after siphon", makerVaultAdapter.delta());
     }
