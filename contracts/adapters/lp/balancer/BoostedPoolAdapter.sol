@@ -27,43 +27,33 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         setUp(initParams);
     }
 
-    function isInParity() public view override returns (bool) {
-        address[] memory stableTokens = BoostedPoolHelper.findStableTokens(
-            pool
-        );
+    function isInParity() public override returns (bool) {
+        (, uint256[] memory prices) = BoostedPoolHelper.calcPrices(pool);
 
         uint256 delta = 0;
-        for (uint256 i = 1; i < stableTokens.length; i++) {
-            // should we use calcPriceIndirect?
-            uint256 price = BoostedPoolHelper.calcPrice(
-                pool,
-                stableTokens[0],
-                stableTokens[i]
-            );
-            uint256 nextDelta = price > FixedPoint.ONE
-                ? price - FixedPoint.ONE
-                : FixedPoint.ONE - price;
-
+        for (uint256 i = 0; i < prices.length; i++) {
+            uint256 nextDelta = FixedPoint.ONE - prices[i];
             delta = Math.max(delta, nextDelta);
         }
         return delta < parityTolerance;
     }
 
-    function balance() public view override returns (uint256) {
+    function balance() public override returns (uint256) {
         (uint256 unstakedBpt, uint256 stakedBpt) = bptBalances();
         return
-            BoostedPoolHelper.calcStableOutGivenBptIn(
+            BoostedPoolHelper.queryStableOutGivenBptIn(
                 pool,
                 unstakedBpt + stakedBpt,
                 tokenOut
             );
     }
 
-    function encodeExit(
-        uint8 kind,
-        uint256 amountIn,
-        uint256 amountOut
-    ) internal view override returns (Transaction memory) {
+    function encodeExit(uint256 amountIn)
+        internal
+        view
+        override
+        returns (Transaction memory)
+    {
         address linearPool = BoostedPoolHelper.findLinearPool(pool, tokenOut);
 
         address[] memory assets = new address[](3);
@@ -74,42 +64,24 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
         int256[] memory limits = new int256[](3);
         limits[0] = int256(amountIn);
         limits[1] = 0;
-        limits[2] = -1 * int256(amountOut);
+        limits[2] = -1;
 
         IVault.BatchSwapStep[] memory swapSteps = new IVault.BatchSwapStep[](2);
-        if (IVault.SwapKind(kind) == IVault.SwapKind.GIVEN_OUT) {
-            swapSteps[0] = IVault.BatchSwapStep({
-                poolId: IPool(linearPool).getPoolId(),
-                assetInIndex: 1,
-                assetOutIndex: 2,
-                amount: amountOut,
-                userData: hex""
-            });
+        swapSteps[0] = IVault.BatchSwapStep({
+            poolId: IPool(pool).getPoolId(),
+            assetInIndex: 0,
+            assetOutIndex: 1,
+            amount: amountIn,
+            userData: hex""
+        });
 
-            swapSteps[1] = IVault.BatchSwapStep({
-                poolId: IPool(pool).getPoolId(),
-                assetInIndex: 0,
-                assetOutIndex: 1,
-                amount: 0,
-                userData: hex""
-            });
-        } else {
-            swapSteps[0] = IVault.BatchSwapStep({
-                poolId: IPool(pool).getPoolId(),
-                assetInIndex: 0,
-                assetOutIndex: 1,
-                amount: amountIn,
-                userData: hex""
-            });
-
-            swapSteps[1] = IVault.BatchSwapStep({
-                poolId: IPool(linearPool).getPoolId(),
-                assetInIndex: 1,
-                assetOutIndex: 2,
-                amount: 0,
-                userData: hex""
-            });
-        }
+        swapSteps[1] = IVault.BatchSwapStep({
+            poolId: IPool(linearPool).getPoolId(),
+            assetInIndex: 1,
+            assetOutIndex: 2,
+            amount: 0,
+            userData: hex""
+        });
 
         return
             Transaction({
@@ -117,7 +89,7 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
                 value: 0,
                 data: abi.encodeWithSelector(
                     0x945bcec9,
-                    kind,
+                    IVault.SwapKind.GIVEN_IN,
                     swapSteps,
                     assets,
                     IVault.FundManagement({
@@ -135,102 +107,29 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
 
     function calculateExit(uint256 requestedAmountOut)
         internal
-        view
         override
-        returns (
-            uint8 kind,
-            uint256 amountIn,
-            uint256 amountOut
-        )
+        returns (uint256 amountIn)
     {
-        // GIVEN_IN
-        // If we are performing a GIVEN_IN batchSwap and wanted to apply a 1% slippage tolerance,
-        // we would multiple our negative assetDeltas by 0.99. We do not need to modify
-        // our positive amounts because we know the exact amount we are putting in.
-        // GIVEN_OUT
-        // If we are performing a GIVEN_OUT batchSwap and wanted to apply a 1% slippage tolerance,
-        // we would multiple our positive assetDeltas by 1.01. We do not need to modify
-        // our negative amounts because we know the exact amount we are getting out.
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
         // For BoostedPools there's a difference between the nominal balance and
-        // withdrawable balance
-        // This is dictated by LinearPools, where most of the liquidity is held in AAVE's
-        // aTokens. The actual stable will outnumbered vs AAVE's yield bearing equivalents.
-        // The equilibirum is to be maintaned by arbers. therefore we are limited on the
-        // batch swap to warever is readily available in stables
-        // For example, even tho a position is 20M, we might only be able to withdraw 5M
-        // In principle, some minutes later, our 15M position will be again good for
-        // another 5M withdraw
+        // liquid balance
+        // This is dictated by LinearPools, where a good part of liquidity is held in
+        // in wrapped tokens (e.g. AAVE's waToken)
+        // The equilibirum is to be maintaned by external arbers. therefore we are capped
+        // by what is promptly available as stable token
         requestedAmountOut = Math.min(
             requestedAmountOut,
-            BoostedPoolHelper.calcMaxStableOut(pool, tokenOut)
+            BoostedPoolHelper.liquidStableBalance(pool, tokenOut)
         );
 
         uint256 amountInAvailable = unstakedBPT + stakedBPT;
-        uint256 amountInGivenOut = BoostedPoolHelper.calcBptInGivenStableOut(
+        uint256 amountInGivenOut = BoostedPoolHelper.queryBptInGivenStableOut(
             pool,
             tokenOut,
             requestedAmountOut
         );
 
-        bool isFullExit = amountInGivenOut >
-            FixedPoint.mulDown(
-                amountInAvailable,
-                FixedPoint.ONE - (slippage + slippage)
-            );
-
-        // Default mode is GIVEN_OUT, retrieving the exactly requested liquidity
-        // But if we are close, then we do GIVEN_IN
-        // we just exit everything, and get warever was out
-        if (isFullExit) {
-            kind = uint8(IVault.SwapKind.GIVEN_IN);
-            amountIn = unstakedBPT + stakedBPT;
-            amountOut = FixedPoint.mulDown(
-                BoostedPoolHelper.calcStableOutGivenBptIn(
-                    pool,
-                    amountIn,
-                    tokenOut
-                ),
-                FixedPoint.ONE - slippage
-            );
-        } else {
-            kind = uint8(IVault.SwapKind.GIVEN_OUT);
-            amountIn = FixedPoint.mulDown(
-                amountInGivenOut,
-                FixedPoint.ONE + slippage
-            );
-            amountOut = requestedAmountOut;
-
-            require(amountIn <= unstakedBPT + stakedBPT, "Invariant");
-        }
-    }
-
-    function _debugPrices() public view returns (uint256, uint256) {
-        address[] memory stableTokens = BoostedPoolHelper.findStableTokens(
-            pool
-        );
-
-        uint256 price1 = BoostedPoolHelper.calcPrice(
-            pool,
-            stableTokens[0],
-            stableTokens[1]
-        );
-
-        uint256 price2 = BoostedPoolHelper.calcPrice(
-            pool,
-            stableTokens[0],
-            stableTokens[2]
-        );
-
-        return (price1, price2);
-    }
-
-    function _balanceNominal(uint256 bptAmount) public view returns (uint256) {
-        uint256 ratio = bptAmount.divDown(
-            IStablePhantomPool(pool).getVirtualSupply()
-        );
-        uint256 nominalValue = BoostedPoolHelper.nominalValue(pool);
-        return ratio.mulDown(nominalValue);
+        amountIn = Math.min(amountInAvailable, amountInGivenOut);
     }
 }

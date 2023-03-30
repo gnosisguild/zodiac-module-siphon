@@ -11,13 +11,6 @@ import "./Utils.sol";
 library LinearPoolHelper {
     using FixedPoint for uint256;
 
-    function nominalValue(address pool) external view returns (uint256) {
-        return
-            ILinearPool(pool).getVirtualSupply().mulDown(
-                ILinearPool(pool).getRate()
-            );
-    }
-
     function calcMainOutGivenBptIn(address pool, uint256 bptAmountIn)
         external
         view
@@ -120,13 +113,13 @@ library LinearPoolHelper {
         return Utils.downscaleUp(amountIn, scalingFactors[indexIn]);
     }
 
-    function calcMaxMainOut(address pool) external view returns (uint256) {
+    function liquidStableBalance(address pool) external view returns (uint256) {
         (uint256[] memory balances, , , ) = query(pool);
 
-        uint256 fee = ILinearPool(pool).getSwapFeePercentage();
+        (uint256 lowerTarget, ) = ILinearPool(pool).getTargets();
         uint256 balance = balances[ILinearPool(pool).getMainIndex()];
 
-        return balance - balance.mulUp(fee);
+        return balance > lowerTarget ? balance - lowerTarget : 0;
     }
 
     function query(address _pool)

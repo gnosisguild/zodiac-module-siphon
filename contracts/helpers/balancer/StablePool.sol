@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "forge-std/Test.sol";
 import "../../lib/balancer/StableMath.sol";
 import "../../lib/balancer/FixedPoint.sol";
 
@@ -17,7 +18,7 @@ library StablePoolHelper {
         address token2
     ) public view returns (uint256) {
         // feeler, 1000 USD
-        uint256 amountIn = 1000 * 10**ERC20(token1).decimals();
+        uint256 amountIn = 1000 * 10 ** ERC20(token1).decimals();
         uint256 amountOut = calcTokenOutGivenTokenIn(
             pool,
             token1,
@@ -70,7 +71,7 @@ library StablePoolHelper {
         uint256 indexIn = Utils.indexOf(tokens.addresses, tokenIn);
         uint256 indexOut = Utils.indexOf(tokens.addresses, tokenOut);
 
-        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
+        Utils.upscaleArray(tokens.balances, tokens.scalingFactors); // @audit - does this mutate the array "in place"? Yes, array is passed by reference. But we should make this implicit.
 
         amountIn = Utils.upscale(
             Utils.subtractSwapFee(pool, amountIn),
@@ -96,14 +97,14 @@ library StablePoolHelper {
     }
 
     function calcBptInGivenTokenOut(
-        address pool,
-        address tokenOut,
-        uint256 amountOut
+        address pool, // stable pool
+        address tokenOut, // dai
+        uint256 amountOut // 7084244248654866374719538 = 7084244 Ether scaled
     ) public view returns (uint256) {
         (PoolTokens memory tokens, uint256 amplification) = query(pool);
-        uint256 indexTokenOut = Utils.indexOf(tokens.addresses, tokenOut);
+        uint256 indexTokenOut = Utils.indexOf(tokens.addresses, tokenOut); // 0
 
-        Utils.upscaleArray(tokens.balances, tokens.scalingFactors);
+        Utils.upscaleArray(tokens.balances, tokens.scalingFactors); // [7084244248654866374719538]
 
         uint256[] memory amountsOut = new uint256[](tokens.addresses.length);
         amountsOut[indexTokenOut] = amountOut = Utils.upscale(
@@ -111,22 +112,26 @@ library StablePoolHelper {
             tokens.scalingFactors[indexTokenOut]
         );
 
+        require(
+            tokens.balances[indexTokenOut] > amountsOut[0],
+            "poolen maa ha nok peng"
+        );
+
+        // this fails
         uint256 amountIn = StableMath._calcBptInGivenExactTokensOut(
-            amplification,
-            tokens.balances,
-            amountsOut,
-            IPool(pool).totalSupply(),
-            IPool(pool).getSwapFeePercentage()
+            amplification, // ?
+            tokens.balances, //
+            amountsOut, // [7084244248654866374719538]
+            IPool(pool).totalSupply(), // 102022331370229975324074897 = 102022331 Ether scaled
+            IPool(pool).getSwapFeePercentage() // 50000000000000
         );
 
         return amountIn;
     }
 
-    function query(address _pool)
-        private
-        view
-        returns (PoolTokens memory tokens, uint256 amplification)
-    {
+    function query(
+        address _pool
+    ) private view returns (PoolTokens memory tokens, uint256 amplification) {
         IStablePool pool = IStablePool(_pool);
         (tokens.addresses, tokens.balances, ) = IVault(pool.getVault())
             .getPoolTokens(pool.getPoolId());

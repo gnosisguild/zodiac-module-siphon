@@ -43,11 +43,7 @@ contract Siphon is Module, MultisendEncoder {
     /// @param _owner Address of the owner
     /// @param _avatar Address of the avatar (e.g. a Gnosis Safe)
     /// @param _target Address of the contract that will call exec function
-    constructor(
-        address _owner,
-        address _avatar,
-        address _target
-    ) {
+    constructor(address _owner, address _avatar, address _target) {
         bytes memory initParams = abi.encode(_owner, _avatar, _target);
         setUp(initParams);
     }
@@ -78,7 +74,7 @@ contract Siphon is Module, MultisendEncoder {
             revert UnsuitableAdapter();
         }
 
-        if (ILiquidityPosition(dp).asset() != IDebtPosition(lp).asset()) {
+        if (IDebtPosition(dp).asset() != ILiquidityPosition(lp).asset()) {
             revert AssetMismatch();
         }
 
@@ -101,30 +97,20 @@ contract Siphon is Module, MultisendEncoder {
         IDebtPosition dp = IDebtPosition(tubes[tube].dp);
         ILiquidityPosition lp = ILiquidityPosition(tubes[tube].lp);
 
-        uint256 triggerRatio = dp.ratioTrigger();
-        if (triggerRatio == 0) {
-            revert TriggerRatioNotSet();
-        }
-
-        uint256 ratio = dp.ratio();
-        if (ratio > triggerRatio) {
+        if (dp.needsRebalancing() == false) {
             revert DebtPositionIsHealthy();
-        }
-
-        uint256 targetRatio = dp.ratioTarget();
-        if (targetRatio < triggerRatio) {
-            revert TargetRatioNotSet();
         }
 
         if (lp.balance() == 0) {
             revert NoLiquidityInvested();
         }
 
-        if (!lp.canWithdraw()) {
+        if (!lp.assessPreWithdraw()) {
             revert WithdrawalBlocked();
         }
 
-        uint256 prevBalance = IERC20(lp.asset()).balanceOf(avatar);
+        address asset = lp.asset();
+        uint256 prevBalance = IERC20(asset).balanceOf(avatar);
         uint256 nextBalance;
         uint256 requestedAmountOut = dp.delta();
         uint256 actualAmountOut;
@@ -141,7 +127,11 @@ contract Siphon is Module, MultisendEncoder {
             revert WithdrawalFailed();
         }
 
-        nextBalance = IERC20(lp.asset()).balanceOf(avatar);
+        if (!lp.assessPostWithdraw()) {
+            revert WithdrawalBlocked();
+        }
+
+        nextBalance = IERC20(asset).balanceOf(avatar);
         actualAmountOut = nextBalance - prevBalance;
 
         if (actualAmountOut == 0) {
@@ -156,7 +146,7 @@ contract Siphon is Module, MultisendEncoder {
         }
     }
 
-    function isConnected(string memory tube) internal view returns (bool) {
+    function isConnected(string memory tube) public view returns (bool) {
         return tubes[tube].dp != address(0) && tubes[tube].lp != address(0);
     }
 }

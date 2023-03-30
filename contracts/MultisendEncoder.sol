@@ -29,15 +29,16 @@ abstract contract MultisendEncoder {
                 data = abi.encodePacked(
                     data,
                     abi.encodePacked(
-                        uint8(txs[i].operation),
-                        txs[i].to,
-                        txs[i].value,
-                        uint256(txs[i].data.length),
-                        txs[i].operation
+                        uint8(txs[i].operation), /// operation as an uint8.
+                        txs[i].to, /// to as an address.
+                        txs[i].value, /// value as an uint256.
+                        uint256(txs[i].data.length), /// data length as an uint256.
+                        txs[i].data /// data as bytes.
                     )
                 );
             }
-            operation = Enum.Operation.Call;
+            data = abi.encodeWithSignature("multiSend(bytes)", data);
+            operation = Enum.Operation.DelegateCall;
         } else {
             to = txs[0].to;
             value = txs[0].value;

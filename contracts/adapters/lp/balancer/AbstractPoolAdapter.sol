@@ -15,8 +15,7 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
     address public tokenOut;
 
     uint256 public parityTolerance = basisPoints(20); // default to 20 basis points.
-    uint256 public minBlockAge = 5; // default to 5 blocks.
-    uint256 public slippage = basisPoints(50); // default to 50 basis points.
+    uint256 public minBlockAge = 1; // default to 1 blocks.
 
     function setUp(bytes memory initParams) public override initializer {
         (
@@ -45,24 +44,22 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return tokenOut;
     }
 
-    function balance() public view virtual override returns (uint256);
+    function balance() public virtual override returns (uint256);
 
-    function canWithdraw() external view override returns (bool) {
-        // we should make sure the pool has at least 1M nomimal value?
-        return isOldEnough() && isInParity();
+    function assessPreWithdraw() external view override returns (bool) {
+        return isOldEnough();
     }
 
-    function withdrawalInstructions(uint256 requestedAmountOut)
-        external
-        view
-        override
-        returns (Transaction[] memory)
-    {
+    function assessPostWithdraw() external override returns (bool) {
+        return isInParity();
+    }
+
+    function withdrawalInstructions(
+        uint256 requestedAmountOut // is 7084244248654866374719538 = 7084244 Eth sized
+    ) external override returns (Transaction[] memory) {
         (uint256 unstakedBalance, ) = bptBalances();
 
-        (uint8 kind, uint256 amountIn, uint256 amountOut) = calculateExit(
-            requestedAmountOut
-        );
+        uint256 amountIn = calculateExit(requestedAmountOut);
 
         uint256 amountToUnstake = amountIn > unstakedBalance
             ? amountIn - unstakedBalance
@@ -72,15 +69,15 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         if (amountToUnstake > 0) {
             result = new Transaction[](2);
             result[0] = encodeUnstake(amountToUnstake);
-            result[1] = encodeExit(kind, amountIn, amountOut);
+            result[1] = encodeExit(amountIn);
         } else {
             result = new Transaction[](1);
-            result[0] = encodeExit(kind, amountIn, amountOut);
+            result[0] = encodeExit(amountIn);
         }
         return result;
     }
 
-    function isInParity() public view virtual returns (bool);
+    function isInParity() public virtual returns (bool);
 
     function isOldEnough() public view returns (bool) {
         (, , uint256 lastModifiedBlock) = IVault(vault).getPoolTokens(
@@ -92,11 +89,9 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
         return age >= minBlockAge;
     }
 
-    function encodeUnstake(uint256 amount)
-        internal
-        view
-        returns (Transaction memory)
-    {
+    function encodeUnstake(
+        uint256 amount
+    ) internal view returns (Transaction memory) {
         //0x2e1a7d4d -> "withdraw(uint256)"
         return
             Transaction({
@@ -108,20 +103,12 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
     }
 
     function encodeExit(
-        uint8 kind,
-        uint256 amountIn,
-        uint256 amountOut
+        uint256 amountIn
     ) internal view virtual returns (Transaction memory);
 
-    function calculateExit(uint256 requestedAmountOut)
-        internal
-        view
-        virtual
-        returns (
-            uint8 kind,
-            uint256 amountIn,
-            uint256 amountOut
-        );
+    function calculateExit(
+        uint256 requestedAmountOut
+    ) internal virtual returns (uint256 amountOut);
 
     function bptBalances()
         public
@@ -138,10 +125,6 @@ abstract contract AbstractPoolAdapter is ILiquidityPosition, FactoryFriendly {
 
     function setMinBlockAge(uint256 _minBlockAge) external onlyOwner {
         minBlockAge = _minBlockAge;
-    }
-
-    function setSlippage(uint256 bips) external onlyOwner {
-        slippage = basisPoints(bips);
     }
 
     function basisPoints(uint256 bips) public pure returns (uint256) {

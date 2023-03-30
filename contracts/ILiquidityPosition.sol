@@ -6,12 +6,13 @@ import "./Transaction.sol";
 interface ILiquidityPosition {
     function asset() external view returns (address);
 
-    function balance() external view returns (uint256);
+    function balance() external returns (uint256);
 
-    function canWithdraw() external view returns (bool);
+    function assessPreWithdraw() external returns (bool);
+
+    function assessPostWithdraw() external returns (bool);
 
     function withdrawalInstructions(uint256 amount)
         external
-        view
         returns (Transaction[] memory);
 }

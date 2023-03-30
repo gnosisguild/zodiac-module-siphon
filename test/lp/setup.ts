@@ -43,9 +43,9 @@ export async function fundWhaleWithStables(): Promise<void> {
   const { BigWhale } = await getNamedAccounts();
   const signer = hre.ethers.provider.getSigner(BigWhale);
 
-  const dai = await fundWhale(DAI_ADDRESS, DAI_WHALE);
-  const tether = await fundWhale(TETHER_ADDRESS, TETHER_WHALE);
-  const usdc = await fundWhale(USDC_ADDRESS, USDC_WHALE);
+  const dai = await fundWithERC20(DAI_ADDRESS, DAI_WHALE, BigWhale);
+  const tether = await fundWithERC20(TETHER_ADDRESS, TETHER_WHALE, BigWhale);
+  const usdc = await fundWithERC20(USDC_ADDRESS, USDC_WHALE, BigWhale);
 
   await dai.connect(signer).approve(VAULT_ADDRESS, MAX_UINT256);
   await tether.connect(signer).approve(VAULT_ADDRESS, MAX_UINT256);
@@ -68,22 +68,41 @@ export async function fundWhaleWithBpt(
   await gauge["withdraw(uint256)"](balance);
 }
 
-export async function fundWhale(
+export async function fundWithERC20(
   tokenAddress: string,
-  fromAddress: string
+  from: string,
+  to: string
+): Promise<Contract> {
+  const token = await hre.ethers.getContractAt("ERC20", tokenAddress);
+
+  await fundWithEth(from);
+
+  await hre.network.provider.request({
+    method: "hardhat_impersonateAccount",
+    params: [from],
+  });
+  const signer = await hre.ethers.provider.getSigner(from);
+  const balance = await token.balanceOf(from);
+  await token.connect(signer).transfer(to, balance);
+  return token;
+}
+
+async function fundWhale(
+  tokenAddress: string,
+  from: string
 ): Promise<Contract> {
   const { BigWhale } = await getNamedAccounts();
 
   const token = await hre.ethers.getContractAt("ERC20", tokenAddress);
 
-  await fundWithEth(fromAddress);
+  await fundWithEth(from);
 
   await hre.network.provider.request({
     method: "hardhat_impersonateAccount",
-    params: [fromAddress],
+    params: [from],
   });
-  const signer = await hre.ethers.provider.getSigner(fromAddress);
-  const balance = await token.balanceOf(fromAddress);
+  const signer = await hre.ethers.provider.getSigner(from);
+  const balance = await token.balanceOf(from);
   await token.connect(signer).transfer(BigWhale, balance);
   return token;
 }

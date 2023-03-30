@@ -1,24 +1,21 @@
-import dotenv from "dotenv";
 import { BigNumber, Contract } from "ethers";
 import { getAddress } from "ethers/lib/utils";
 import hre, { deployments, ethers, getNamedAccounts } from "hardhat";
 
 import {
   BOOSTED_GAUGE_ADDRESS,
-  BOOSTED_GAUGE_TOP_HOLDERS,
   BOOSTED_POOL_ADDRESS,
   gaugeAbi,
   vaultAbi,
   VAULT_ADDRESS,
 } from "../constants";
-import { fundWhale } from "../setup";
+import { fundWithERC20 } from "../setup";
 
 const USDC = {
   main: getAddress("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
   wrapped: getAddress("0xd093fa4fb80d09bb30817fdcd442d4d02ed3e5de"),
   linearPool: getAddress("0x9210f1204b5a24742eba12f710636d76240df3d0"),
 };
-const USDC_WHALE = "0x47ac0fb4f2d84898e4d9e7b4dab3c24507a6d503";
 
 const DAI = {
   main: getAddress("0x6b175474e89094c44da98b954eedeac495271d0f"),
@@ -55,7 +52,9 @@ async function setupAdapter(avatar: Contract) {
   return adapter;
 }
 
-export async function setupFundWhaleWithBPT(): Promise<void> {
+export async function setupFundWhale(
+  boostedGaugeTopHolders: string[]
+): Promise<void> {
   const { BigWhale } = await getNamedAccounts();
   const signer = hre.ethers.provider.getSigner(BigWhale);
 
@@ -65,8 +64,12 @@ export async function setupFundWhaleWithBPT(): Promise<void> {
     signer
   );
 
-  for (let i = 0; i < BOOSTED_GAUGE_TOP_HOLDERS.length; i++) {
-    await fundWhale(BOOSTED_GAUGE_ADDRESS, BOOSTED_GAUGE_TOP_HOLDERS[i]);
+  for (let i = 0; i < boostedGaugeTopHolders.length; i++) {
+    await fundWithERC20(
+      BOOSTED_GAUGE_ADDRESS,
+      boostedGaugeTopHolders[i],
+      BigWhale
+    );
   }
 
   const balance: BigNumber = await gauge.balanceOf(BigWhale);
@@ -101,6 +104,7 @@ export async function setup() {
   const tether = await hre.ethers.getContractAt("ERC20", TETHER.main);
   const usdc = await hre.ethers.getContractAt("ERC20", USDC.main);
   const boostedPoolHelper = await getBoostedPoolHelper();
+  const stablePhantomPoolHelper = await getStablePhantomHelper();
 
   return {
     avatar,
@@ -111,6 +115,7 @@ export async function setup() {
     tether,
     usdc,
     boostedPoolHelper,
+    stablePhantomPoolHelper,
   };
 }
 
@@ -185,7 +190,19 @@ export async function investInPool(
 }
 
 async function getBoostedPoolHelper() {
-  const deployment = await deployments.get("BoostedPoolHelper");
+  const BoostedPoolHelper = await deployments.get("BoostedPoolHelper");
+
+  const Helper = await hre.ethers.getContractFactory("BoostedPoolHelperMock", {
+    libraries: {
+      BoostedPoolHelper: BoostedPoolHelper.address,
+    },
+  });
+  const helper = await Helper.deploy();
+  return helper;
+}
+
+async function getStablePhantomHelper() {
+  const deployment = await deployments.get("StablePhantomPoolHelper");
   return new ethers.Contract(
     deployment.address,
     deployment.abi,

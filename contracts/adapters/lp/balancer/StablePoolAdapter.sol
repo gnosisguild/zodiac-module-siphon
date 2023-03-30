@@ -41,7 +41,7 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             );
             uint256 nextDelta = price > FixedPoint.ONE
                 ? price - FixedPoint.ONE
-                : FixedPoint.ONE - price;
+                : FixedPoint.ONE - price; // @audit - what if the token does not have 18 decimals, like USDT?
 
             delta = Math.max(delta, nextDelta);
         }
@@ -59,25 +59,13 @@ contract StablePoolAdapter is AbstractPoolAdapter {
     }
 
     function encodeExit(
-        uint8 kind,
-        uint256 amountIn,
-        uint256 amountOut
+        uint256 amountIn
     ) internal view override returns (Transaction memory) {
         bytes32 poolId = IPool(pool).getPoolId();
         (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
         uint256 tokenOutIndex = Utils.indexOf(tokens, tokenOut);
         uint256[] memory amountsOut = new uint256[](tokens.length);
-        amountsOut[tokenOutIndex] = amountOut;
-
-        bytes memory userData;
-        if (
-            IVault.ExitKind(kind) ==
-            IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT
-        ) {
-            userData = abi.encode(kind, amountIn, tokenOutIndex);
-        } else {
-            userData = abi.encode(kind, amountsOut, amountIn);
-        }
+        //amountsOut[tokenOutIndex] = amountOut;
 
         return
             Transaction({
@@ -91,7 +79,11 @@ contract StablePoolAdapter is AbstractPoolAdapter {
                     IVault.ExitPoolRequest({
                         assets: tokens,
                         minAmountsOut: amountsOut,
-                        userData: userData,
+                        userData: abi.encode(
+                            IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT,
+                            amountIn,
+                            tokenOutIndex
+                        ),
                         toInternalBalance: false
                     })
                 ),
@@ -99,49 +91,18 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             });
     }
 
-    function calculateExit(uint256 requestedAmountOut)
-        internal
-        view
-        override
-        returns (
-            uint8 kind,
-            uint256 amountIn,
-            uint256 amountOut
-        )
-    {
+    function calculateExit(
+        uint256 requestedAmountOut
+    ) internal view override returns (uint256 amountIn) {
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
         uint256 amountInAvailable = unstakedBPT + stakedBPT;
         uint256 amountInGivenOut = StablePoolHelper.calcBptInGivenTokenOut(
             pool,
             tokenOut,
-            requestedAmountOut
+            requestedAmountOut // 7084244248654866374719538
         );
 
-        bool isFullExit = amountInGivenOut >
-            FixedPoint.mulDown(
-                amountInAvailable,
-                FixedPoint.ONE - (slippage + slippage)
-            );
-
-        if (isFullExit) {
-            kind = uint8(IVault.ExitKind.EXACT_BPT_IN_FOR_ONE_TOKEN_OUT);
-            amountIn = unstakedBPT + stakedBPT;
-            amountOut = FixedPoint.mulDown(
-                StablePoolHelper.calcTokenOutGivenBptIn(
-                    pool,
-                    amountIn,
-                    tokenOut
-                ),
-                FixedPoint.ONE - slippage
-            );
-        } else {
-            kind = uint8(IVault.ExitKind.BPT_IN_FOR_EXACT_TOKENS_OUT);
-            amountIn = FixedPoint.mulDown(
-                amountInGivenOut,
-                FixedPoint.ONE + slippage
-            );
-            amountOut = requestedAmountOut;
-        }
+        return Math.min(amountInAvailable, amountInGivenOut);
     }
 }
