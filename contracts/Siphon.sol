@@ -158,11 +158,11 @@ contract Siphon is Module, MultisendEncoder, AutomationCompatible {
         external
         override
         cannotExecute
-        returns (bool upkeepNeeded, bytes memory /* performData */)
+        returns (bool upkeepNeeded, bytes memory performData)
     {
         string memory _tube = abi.decode(checkData, (string));
-        upkeepNeeded = siphon(_tube);
-        // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
+        upkeepNeeded = IDebtPosition(tubes[_tube].dp).needsRebalancing();
+        performData = checkData;
     }
 
     function performUpkeep(bytes calldata performData) external override {
