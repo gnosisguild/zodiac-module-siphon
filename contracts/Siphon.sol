@@ -74,7 +74,7 @@ contract Siphon is Module, MultisendEncoder {
             revert UnsuitableAdapter();
         }
 
-        if (ILiquidityPosition(dp).asset() != IDebtPosition(lp).asset()) {
+        if (IDebtPosition(dp).asset() != ILiquidityPosition(lp).asset()) {
             revert AssetMismatch();
         }
 
