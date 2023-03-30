@@ -24,7 +24,7 @@ describe("LP: Balancer Stable Pool Helper", async () => {
   let baseSetup: any;
 
   before(async () => {
-    await fork(15012865);
+    await fork(15582929);
 
     baseSetup = deployments.createFixture(async ({ deployments }) => {
       await deployments.fixture();
@@ -199,7 +199,7 @@ describe("LP: Balancer Stable Pool Helper", async () => {
   });
 });
 
-export async function queryTokenOutGivenBptIn(
+async function queryTokenOutGivenBptIn(
   vault: Contract,
   pool: Contract,
   bptAmountIn: string | BigNumber,
@@ -231,7 +231,7 @@ export async function queryTokenOutGivenBptIn(
   return amountsOut[tokenOutIndex];
 }
 
-export async function queryBptInGivenTokenOut(
+async function queryBptInGivenTokenOut(
   vault: Contract,
   pool: Contract,
   tokenOut: string,
@@ -266,7 +266,7 @@ export async function queryBptInGivenTokenOut(
   return bptIn;
 }
 
-export async function queryTokenOutGivenTokenIn(
+async function queryTokenOutGivenTokenIn(
   vault: Contract,
   pool: Contract,
   tokenIn: string,
