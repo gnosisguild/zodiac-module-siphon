@@ -327,7 +327,7 @@ library StableMath {
     function _calcBptInGivenExactTokensOut(
         uint256 amp,
         uint256[] memory balances,
-        uint256[] memory amountsOut,
+        uint256[] memory amountsOut, //[7084244248654866374719538]
         uint256 bptTotalSupply,
         uint256 swapFeePercentage
     ) internal pure returns (uint256) {
@@ -347,7 +347,7 @@ library StableMath {
         uint256 invariantRatioWithoutFees = 0;
         for (uint256 i = 0; i < balances.length; i++) {
             uint256 currentWeight = balances[i].divUp(sumBalances);
-            balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp(
+            balanceRatiosWithoutFee[i] = balances[i].sub(amountsOut[i]).divUp( // this sub fails
                 balances[i]
             );
             invariantRatioWithoutFees = invariantRatioWithoutFees.add(

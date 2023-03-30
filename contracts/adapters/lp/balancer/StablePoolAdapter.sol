@@ -41,7 +41,7 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             );
             uint256 nextDelta = price > FixedPoint.ONE
                 ? price - FixedPoint.ONE
-                : FixedPoint.ONE - price;
+                : FixedPoint.ONE - price; // @audit - what if the token does not have 18 decimals, like USDT?
 
             delta = Math.max(delta, nextDelta);
         }
@@ -58,12 +58,9 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             );
     }
 
-    function encodeExit(uint256 amountIn)
-        internal
-        view
-        override
-        returns (Transaction memory)
-    {
+    function encodeExit(
+        uint256 amountIn
+    ) internal view override returns (Transaction memory) {
         bytes32 poolId = IPool(pool).getPoolId();
         (address[] memory tokens, , ) = IVault(vault).getPoolTokens(poolId);
         uint256 tokenOutIndex = Utils.indexOf(tokens, tokenOut);
@@ -94,19 +91,16 @@ contract StablePoolAdapter is AbstractPoolAdapter {
             });
     }
 
-    function calculateExit(uint256 requestedAmountOut)
-        internal
-        view
-        override
-        returns (uint256 amountIn)
-    {
+    function calculateExit(
+        uint256 requestedAmountOut
+    ) internal view override returns (uint256 amountIn) {
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
         uint256 amountInAvailable = unstakedBPT + stakedBPT;
         uint256 amountInGivenOut = StablePoolHelper.calcBptInGivenTokenOut(
             pool,
             tokenOut,
-            requestedAmountOut
+            requestedAmountOut // 7084244248654866374719538
         );
 
         return Math.min(amountInAvailable, amountInGivenOut);
