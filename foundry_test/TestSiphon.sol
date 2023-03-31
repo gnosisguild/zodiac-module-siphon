@@ -132,13 +132,24 @@ contract TestSiphon is Test, SetupMakerVaultAdapter, PoolJoinerHelper {
             address(stablePoolAdapter)
         );
 
-        emit log_named_uint("Ratio Trigger", makerVaultAdapter.ratioTrigger());
-        emit log_named_uint("Initial ratio", makerVaultAdapter.ratio());
-        emit log_named_uint("Initial delta", makerVaultAdapter.delta());
+        uint256 bptBefore = IERC20(BALANCER_STABLE_POOL).balanceOf(
+            address(avatar)
+        );
+        uint256 dpDeltaBefore = makerVaultAdapter.delta();
 
         siphon.siphon("testTube2");
 
-        emit log_named_uint("Ratio after siphon", makerVaultAdapter.ratio());
-        emit log_named_uint("Delta after siphon", makerVaultAdapter.delta());
+        vm.roll(1);
+
+        assertGt(
+            bptBefore,
+            IERC20(address(balancerStablePool)).balanceOf(address(avatar)),
+            "The avatar should have less Balancer Pool Tokens (BPT) in the pool after siphon"
+        );
+        // assertGt(
+        //     dpDeltaBefore,
+        //     makerVaultAdapter.delta(),
+        //     "The dp position should have a lower delta after siphoning"
+        // );
     }
 }
