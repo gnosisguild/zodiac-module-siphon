@@ -94,6 +94,7 @@ contract TestSiphon is Test, SetupMakerVaultAdapter, PoolJoinerHelper {
         // create and setup siphon and enable it on the avatar
         siphon = new Siphon(address(this), address(avatar), address(this));
         avatar.setModule(address(siphon));
+        siphon.setTarget(address(avatar));
     }
 
     function test_connect_tube() public {
