@@ -3,6 +3,7 @@ pragma solidity ^0.8.6;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@gnosis.pm/zodiac/contracts/core/Module.sol";
+import "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
 import "./MultisendEncoder.sol";
 import "./IDebtPosition.sol";
@@ -13,7 +14,7 @@ struct Tube {
     address lp;
 }
 
-contract Siphon is Module, MultisendEncoder {
+contract Siphon is Module, MultisendEncoder, AutomationCompatible {
     mapping(string => Tube) public tubes;
 
     error TubeIsConnected();
@@ -89,7 +90,7 @@ contract Siphon is Module, MultisendEncoder {
         delete tubes[tube];
     }
 
-    function siphon(string memory tube) public {
+    function siphon(string memory tube) public returns (bool) {
         if (!isConnected(tube)) {
             revert TubeIsDisconnected();
         }
@@ -144,9 +145,28 @@ contract Siphon is Module, MultisendEncoder {
         if (!exec(to, value, data, Enum.Operation.Call)) {
             revert PaymentFailed();
         }
+        return true;
     }
 
     function isConnected(string memory tube) public view returns (bool) {
         return tubes[tube].dp != address(0) && tubes[tube].lp != address(0);
+    }
+
+    function checkUpkeep(
+        bytes calldata checkData
+    )
+        external
+        override
+        cannotExecute
+        returns (bool upkeepNeeded, bytes memory performData)
+    {
+        string memory _tube = abi.decode(checkData, (string));
+        upkeepNeeded = IDebtPosition(tubes[_tube].dp).needsRebalancing();
+        performData = checkData;
+    }
+
+    function performUpkeep(bytes calldata performData) external override {
+        string memory _tube = abi.decode(performData, (string));
+        siphon(_tube);
     }
 }
