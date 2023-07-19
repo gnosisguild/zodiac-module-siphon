@@ -1,7 +1,6 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { getAddress } from "ethers/lib/utils";
-import hre, { deployments, getNamedAccounts } from "hardhat";
 
 import {
   BOOSTED_GAUGE_TOP_HOLDERS,
@@ -9,84 +8,83 @@ import {
   TETHER_ADDRESS,
   USDC_ADDRESS,
 } from "../constants";
-import { fork, forkReset, fundWhaleWithStables } from "../setup";
+import {
+  fork,
+  forkReset,
+  fundWhaleWithStables,
+  getWhaleSigner,
+} from "../setup";
 
 import { setup, setupFundWhale, setupFundAvatar, investInPool } from "./setup";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("LP: Balancer Boosted Pool", async () => {
   describe("isInParity", async () => {
-    let baseSetup: any;
-
     before(async () => {
       await fork(15582929);
-
-      baseSetup = deployments.createFixture(async ({ deployments }) => {
-        await deployments.fixture();
-
-        const {
-          avatar,
-          adapter,
-          pool,
-          gauge,
-          dai,
-          tether,
-          usdc,
-          boostedPoolHelper,
-        } = await setup();
-
-        await setupFundWhale(BOOSTED_GAUGE_TOP_HOLDERS);
-        await fundWhaleWithStables();
-
-        await setupFundAvatar(
-          avatar,
-          BigNumber.from("1000000000000000000000000"),
-          BigNumber.from("1000000000000000000000000")
-        );
-
-        return {
-          avatar,
-          adapter,
-          pool,
-          gauge,
-          dai,
-          tether,
-          usdc,
-          boostedPoolHelper,
-        };
-      });
     });
 
     after(async () => {
       await forkReset();
     });
 
+    async function baseSetup() {
+      const {
+        avatar,
+        adapter,
+        pool,
+        gauge,
+        dai,
+        tether,
+        usdc,
+        boostedPoolHelper,
+      } = await setup();
+
+      await setupFundWhale(BOOSTED_GAUGE_TOP_HOLDERS);
+      await fundWhaleWithStables();
+
+      await setupFundAvatar(
+        avatar,
+        BigNumber.from("1000000000000000000000000"),
+        BigNumber.from("1000000000000000000000000"),
+      );
+
+      return {
+        avatar,
+        adapter,
+        pool,
+        gauge,
+        dai,
+        tether,
+        usdc,
+        boostedPoolHelper,
+      };
+    }
+
     it("respects different tolerances for a balanced pool", async () => {
-      const { adapter } = await baseSetup();
+      const { adapter } = await loadFixture(baseSetup);
 
-      const { BigWhale } = await getNamedAccounts();
+      const signer = await getWhaleSigner();
 
-      const signer = hre.ethers.provider.getSigner(BigWhale);
-      // the default value is 20 bips 0.2%
+      // // the default value is 20 bips 0.2%
       await adapter.connect(signer).setParityTolerance(20);
       expect(await adapter.callStatic.isInParity()).to.equal(true);
     });
 
     it("is not in parity for an unbalanced pool", async () => {
-      const { adapter, pool, dai, boostedPoolHelper } = await baseSetup();
+      const { adapter, pool, dai, boostedPoolHelper } = await loadFixture(
+        baseSetup,
+      );
 
-      const { BigWhale } = await getNamedAccounts();
-      const signer = hre.ethers.provider.getSigner(BigWhale);
+      const signer = await getWhaleSigner();
 
       // pool initially in parity
       expect(await adapter.callStatic.isInParity()).to.equal(true);
 
       const before = await boostedPoolHelper.callStatic.calcPrices(
-        pool.address
+        pool.address,
       );
       const pricesBefore = pricesToReadable(before);
-
-      // const nominalsBefore = await boostedPoolHelper.nominals(pool.address);
-      // console.log("Before", nominalsBefore.toString());
 
       expect(pricesBefore.dai).to.equal("0.999900");
       expect(pricesBefore.usdc).to.equal("0.999900");
@@ -96,7 +94,8 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       await investInPool(
         dai.address,
-        BigNumber.from("200000000000000000000000000")
+        BigNumber.from("200000000000000000000000000"),
+        boostedPoolHelper,
       );
 
       const after = await boostedPoolHelper.callStatic.calcPrices(pool.address);
@@ -120,13 +119,13 @@ describe("LP: Balancer Boosted Pool", async () => {
 function pricesToReadable([tokens, prices]: [string[], BigNumber[]]) {
   return {
     dai: priceToReadable(
-      prices[tokens.findIndex((token) => getAddress(token) === DAI_ADDRESS)]
+      prices[tokens.findIndex((token) => getAddress(token) === DAI_ADDRESS)],
     ),
     usdc: priceToReadable(
-      prices[tokens.findIndex((token) => getAddress(token) === USDC_ADDRESS)]
+      prices[tokens.findIndex((token) => getAddress(token) === USDC_ADDRESS)],
     ),
     tether: priceToReadable(
-      prices[tokens.findIndex((token) => getAddress(token) === TETHER_ADDRESS)]
+      prices[tokens.findIndex((token) => getAddress(token) === TETHER_ADDRESS)],
     ),
   };
 }

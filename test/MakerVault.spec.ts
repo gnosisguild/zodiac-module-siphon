@@ -1,17 +1,16 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import hre, { deployments, waffle } from "hardhat";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import hre from "hardhat";
 
 const AddressOne = "0x0000000000000000000000000000000000000001";
 const ratioTarget = 4586919454964052515806212538n;
 const ratioTrigger = 4211626045012448219058431512n;
 const expectedRatio = BigNumber.from(4169926777240047741642011399n);
 const expectedDelta = BigNumber.from(2479023057692998402742223n);
-const [user] = waffle.provider.getWallets();
 
 describe("DP: Maker", async () => {
-  const baseSetup = deployments.createFixture(async () => {
-    await deployments.fixture();
+  async function baseSetup() {
     const urn = 123;
     const VAT = await hre.ethers.getContractFactory("MockVat");
     const vat = await VAT.deploy();
@@ -23,13 +22,15 @@ describe("DP: Maker", async () => {
     const dai = await Dai.deploy(18);
     const DaiJoin = await hre.ethers.getContractFactory("DaiJoin");
     const daiJoin = await DaiJoin.deploy(vat.address, dai.address);
+    const [user] = await hre.ethers.getSigners();
     const Avatar = await hre.ethers.getContractFactory("TestAvatar");
     const avatar = await Avatar.deploy();
     const DSProxy = await hre.ethers.getContractFactory("DSProxy");
     const dsProxy = await DSProxy.deploy(avatar.address);
     const DsProxyActions = await hre.ethers.getContractFactory(
-      "DssProxyActions"
+      "DssProxyActions",
     );
+
     const dsProxyActions = await DsProxyActions.deploy();
     const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
     const adapter = await Adapter.deploy(
@@ -42,7 +43,7 @@ describe("DP: Maker", async () => {
       spotter.address, // spotter
       ratioTarget, // ratio target
       ratioTrigger, // ratio trigger
-      urn // vault
+      urn, // vault
     );
 
     return {
@@ -55,8 +56,9 @@ describe("DP: Maker", async () => {
       spotter,
       urn,
       vat,
+      user,
     };
-  });
+  }
 
   describe("constructor", async () => {
     it("sets variables correctly", async () => {
@@ -69,7 +71,8 @@ describe("DP: Maker", async () => {
         dsProxyActions,
         spotter,
         urn,
-      } = await baseSetup();
+        user,
+      } = await loadFixture(baseSetup);
       expect(await adapter.asset()).to.equal(dai.address);
       expect(await adapter.cdpManager()).to.equal(cdpManager.address);
       expect(await adapter.daiJoin()).to.equal(daiJoin.address);
@@ -85,15 +88,15 @@ describe("DP: Maker", async () => {
 
   describe("setRatioTarget()", async () => {
     it("Can only be called by owner", async () => {
-      const { adapter } = await baseSetup();
+      const { adapter } = await loadFixture(baseSetup);
 
       await adapter.transferOwnership(AddressOne);
       expect(adapter.setRatioTarget(42)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
+        "Ownable: caller is not the owner",
       );
     });
     it("Sets ratioTarget", async () => {
-      const { adapter } = await baseSetup();
+      const { adapter } = await loadFixture(baseSetup);
       await adapter.setRatioTarget(42);
       const ratioTarget = await adapter.ratioTarget();
       expect(ratioTarget).to.equal(42);
@@ -102,15 +105,15 @@ describe("DP: Maker", async () => {
 
   describe("setRatioTrigger()", async () => {
     it("Can only be called by owner", async () => {
-      const { adapter } = await baseSetup();
+      const { adapter } = await loadFixture(baseSetup);
 
       await adapter.transferOwnership(AddressOne);
       expect(adapter.setRatioTrigger(42)).to.be.revertedWith(
-        "Ownable: caller is not the owner"
+        "Ownable: caller is not the owner",
       );
     });
     it("Sets ratioTrigger", async () => {
-      const { adapter } = await baseSetup();
+      const { adapter } = await loadFixture(baseSetup);
       await adapter.setRatioTrigger(42);
       const ratioTrigger = await adapter.ratioTrigger();
       expect(ratioTrigger).to.equal(42);
@@ -119,7 +122,7 @@ describe("DP: Maker", async () => {
 
   describe("ratio()", async () => {
     it("Returns Correct Ratio", async () => {
-      const { adapter } = await baseSetup();
+      const { adapter } = await loadFixture(baseSetup);
       const ratio = await adapter.ratio();
       expect(ratio).to.equal(expectedRatio);
     });
@@ -127,7 +130,7 @@ describe("DP: Maker", async () => {
 
   describe("delta()", async () => {
     it("Returns Correct Delta", async () => {
-      const { adapter } = await baseSetup();
+      const { adapter } = await loadFixture(baseSetup);
       const delta = await adapter.delta();
       expect(delta).to.equal(expectedDelta);
     });
@@ -135,9 +138,9 @@ describe("DP: Maker", async () => {
 
   describe("paymentInstructions()", async () => {
     it.skip("Correctly encodes payment instructions", async () => {
-      const { adapter, dsProxy, dai } = await baseSetup();
+      const { adapter, dsProxy, dai } = await loadFixture(baseSetup);
       const [allow, transfer] = await adapter.paymentInstructions(
-        expectedDelta
+        expectedDelta,
       );
       const expectedAllow = {
         to: dai.address,

@@ -1,9 +1,10 @@
+import "@typechain/hardhat";
+import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-waffle";
-import "solidity-coverage";
-import "hardhat-deploy";
-import "hardhat-gas-reporter";
+import "@nomicfoundation/hardhat-chai-matchers";
+
 import "hardhat-contract-sizer";
+import "hardhat-gas-reporter";
 
 import dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
@@ -39,7 +40,7 @@ if (PK) {
 
 if (["rinkeby", "mainnet"].includes(argv.network) && INFURA_KEY === undefined) {
   throw new Error(
-    `Could not find Infura key in env, unable to connect to network ${argv.network}`
+    `Could not find Infura key in env, unable to connect to network ${argv.network}`,
   );
 }
 

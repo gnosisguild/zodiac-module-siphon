@@ -1,6 +1,7 @@
 import { BigNumber, Contract } from "ethers";
 import { getAddress } from "ethers/lib/utils";
-import hre, { deployments, ethers, getNamedAccounts } from "hardhat";
+import hre, { ethers } from "hardhat";
+import { deployBalancerLibs, getWhaleSigner } from "../setup";
 
 import {
   BOOSTED_GAUGE_ADDRESS,
@@ -10,6 +11,7 @@ import {
   VAULT_ADDRESS,
 } from "../constants";
 import { fundWithERC20 } from "../setup";
+import { BoostedPoolHelperMock } from "../../../typechain-types";
 
 const USDC = {
   main: getAddress("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"),
@@ -29,13 +31,12 @@ const TETHER = {
   linearPool: getAddress("0x2bbf681cc4eb09218bee85ea2a5d3d13fa40fc0c"),
 };
 
-async function setupAdapter(avatar: Contract) {
-  const { BigWhale } = await getNamedAccounts();
-  const BoostedPoolHelper = await deployments.get("BoostedPoolHelper");
+async function setupAdapter(libraries: any, avatar: Contract) {
+  const BigWhale = await (await getWhaleSigner()).address;
 
   const Adapter = await hre.ethers.getContractFactory("BoostedPoolAdapter", {
     libraries: {
-      BoostedPoolHelper: BoostedPoolHelper.address,
+      BoostedPoolHelper: libraries.boostedPoolHelper.address,
     },
   });
   const adapter = await Adapter.deploy(
@@ -46,45 +47,44 @@ async function setupAdapter(avatar: Contract) {
     // gauge
     BOOSTED_GAUGE_ADDRESS,
     // dai
-    DAI.main
+    DAI.main,
   );
 
   return adapter;
 }
 
 export async function setupFundWhale(
-  boostedGaugeTopHolders: string[]
+  boostedGaugeTopHolders: string[],
 ): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
+  const BigWhale = await signer.address;
 
   const gauge = new hre.ethers.Contract(
     BOOSTED_GAUGE_ADDRESS,
     gaugeAbi,
-    signer
+    signer,
   );
 
   for (let i = 0; i < boostedGaugeTopHolders.length; i++) {
     await fundWithERC20(
       BOOSTED_GAUGE_ADDRESS,
       boostedGaugeTopHolders[i],
-      BigWhale
+      BigWhale,
     );
   }
 
   const balance: BigNumber = await gauge.balanceOf(BigWhale);
   await gauge["withdraw(uint256)"](
-    balance.sub(BigNumber.from("1000000000000000000000000"))
+    balance.sub(BigNumber.from("1000000000000000000000000")),
   );
 }
 
 export async function setupFundAvatar(
   avatar: Contract,
   gaugeAmount: BigNumber,
-  bptAmount: BigNumber
+  bptAmount: BigNumber,
 ): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
 
   const gauge = await hre.ethers.getContractAt("ERC20", BOOSTED_GAUGE_ADDRESS);
   const bpt = await hre.ethers.getContractAt("ERC20", BOOSTED_POOL_ADDRESS);
@@ -94,17 +94,17 @@ export async function setupFundAvatar(
 }
 
 export async function setup() {
+  const libraries = await deployBalancerLibs();
   const Avatar = await hre.ethers.getContractFactory("TestAvatar");
   const avatar = await Avatar.deploy();
-  const adapter = await setupAdapter(avatar);
+
+  const adapter = await setupAdapter(libraries, avatar);
 
   const pool = await hre.ethers.getContractAt("ERC20", BOOSTED_POOL_ADDRESS);
   const gauge = await hre.ethers.getContractAt("ERC20", BOOSTED_GAUGE_ADDRESS);
   const dai = await hre.ethers.getContractAt("ERC20", DAI.main);
   const tether = await hre.ethers.getContractAt("ERC20", TETHER.main);
   const usdc = await hre.ethers.getContractAt("ERC20", USDC.main);
-  const boostedPoolHelper = await getBoostedPoolHelper();
-  const stablePhantomPoolHelper = await getStablePhantomHelper();
 
   return {
     avatar,
@@ -114,18 +114,19 @@ export async function setup() {
     dai,
     tether,
     usdc,
-    boostedPoolHelper,
-    stablePhantomPoolHelper,
+    boostedPoolHelper: await deployBoostedPoolHelpeMock(
+      libraries.boostedPoolHelper.address,
+    ),
   };
 }
 
 export async function investInPool(
   tokenIn: string,
-  amountIn: BigNumber
+  amountIn: BigNumber,
+  boostedPoolHelper: BoostedPoolHelperMock,
 ): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
-  const boostedPoolHelper = await getBoostedPoolHelper();
+  const signer = await getWhaleSigner();
+  const BigWhale = await signer.address;
 
   const vault = new ethers.Contract(VAULT_ADDRESS, vaultAbi, signer);
 
@@ -134,19 +135,19 @@ export async function investInPool(
   const boostedPool = new ethers.Contract(
     BOOSTED_POOL_ADDRESS,
     linearPoolAbi,
-    signer
+    signer,
   );
   const boostedPoolId = await boostedPool.getPoolId();
 
   const linearPoolAddress = await boostedPoolHelper.findLinearPool(
     BOOSTED_POOL_ADDRESS,
-    tokenIn
+    tokenIn,
   );
 
   const linearPool = new ethers.Contract(
     linearPoolAddress,
     linearPoolAbi,
-    signer
+    signer,
   );
   const linearPoolId = await linearPool.getPoolId();
 
@@ -183,32 +184,30 @@ export async function investInPool(
       toInternalBalance: false,
     },
     ["-1", 0, amountIn],
-    BigNumber.from("999999999999999999")
+    BigNumber.from("999999999999999999"),
   );
 
   await tx.wait();
 }
 
-async function getBoostedPoolHelper() {
-  const BoostedPoolHelper = await deployments.get("BoostedPoolHelper");
-
+async function deployBoostedPoolHelpeMock(address: string) {
   const Helper = await hre.ethers.getContractFactory("BoostedPoolHelperMock", {
     libraries: {
-      BoostedPoolHelper: BoostedPoolHelper.address,
+      BoostedPoolHelper: address,
     },
   });
   const helper = await Helper.deploy();
   return helper;
 }
 
-async function getStablePhantomHelper() {
-  const deployment = await deployments.get("StablePhantomPoolHelper");
-  return new ethers.Contract(
-    deployment.address,
-    deployment.abi,
-    hre.ethers.provider
-  );
-}
+// async function getStablePhantomHelper() {
+//   const deployment = await deployments.get("StablePhantomPoolHelper");
+//   return new ethers.Contract(
+//     deployment.address,
+//     deployment.abi,
+//     hre.ethers.provider,
+//   );
+// }
 
 const linearPoolAbi = [
   "function balanceOf(address account) view returns (uint256)",

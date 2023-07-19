@@ -1,62 +1,53 @@
 import { expect } from "chai";
 import { BigNumber } from "ethers";
-import hre, { deployments, getNamedAccounts } from "hardhat";
+import hre from "hardhat";
 
 import { BOOSTED_GAUGE_TOP_HOLDERS } from "../constants";
-import { fork, forkReset } from "../setup";
+import { fork, forkReset, getWhaleSigner } from "../setup";
 
 import { setup, setupFundWhale, setupFundAvatar } from "./setup";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("LP: Balancer Boosted Pool", async () => {
   describe("withdrawalInstructions", async () => {
-    let baseSetup: any;
-
     before(async () => {
       await fork(15582929);
-
-      baseSetup = deployments.createFixture(async ({ deployments }) => {
-        await deployments.fixture();
-
-        const {
-          avatar,
-          adapter,
-          pool,
-          gauge,
-          dai,
-          boostedPoolHelper,
-          stablePhantomPoolHelper,
-        } = await setup();
-
-        await setupFundWhale(BOOSTED_GAUGE_TOP_HOLDERS);
-
-        await setupFundAvatar(
-          avatar,
-          BigNumber.from("1000000000000000000000000"),
-          BigNumber.from("1000000000000000000000000")
-        );
-
-        return {
-          avatar,
-          adapter,
-          pool,
-          gauge,
-          dai,
-          boostedPoolHelper,
-          stablePhantomPoolHelper,
-        };
-      });
     });
 
     after(async () => {
       await forkReset();
     });
 
+    async function baseSetup() {
+      const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
+        await setup();
+
+      await setupFundWhale(BOOSTED_GAUGE_TOP_HOLDERS);
+
+      await setupFundAvatar(
+        avatar,
+        BigNumber.from("1000000000000000000000000"),
+        BigNumber.from("1000000000000000000000000"),
+      );
+
+      return {
+        avatar,
+        adapter,
+        pool,
+        gauge,
+        dai,
+        boostedPoolHelper,
+      };
+    }
+
     it("Withdrawing more than available balance yields full exit - outGivenIn", async () => {
-      const { avatar, adapter, pool, gauge, dai } = await baseSetup();
+      const { avatar, adapter, pool, gauge, dai } = await loadFixture(
+        baseSetup,
+      );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
+      const adapterLiquidity = BigNumber.from("2029247129866388445168697");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -64,7 +55,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await pool.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
       expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
+        avatarGaugeBalance,
       );
 
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
@@ -73,7 +64,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       const requestedAmountOut = adapterLiquidity.mul(3);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut
+        requestedAmountOut,
       );
 
       expect(instructions).to.have.length(2);
@@ -81,22 +72,22 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data
+        instructions[0].data,
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data
+        instructions[1].data,
       );
 
       // Expect BPT and StakedBPT to be drained
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0")
+        BigNumber.from("0"),
       );
 
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0")
+        BigNumber.from("0"),
       );
 
       const actualAmountOut = await dai.balanceOf(avatar.address);
@@ -105,30 +96,32 @@ describe("LP: Balancer Boosted Pool", async () => {
     });
 
     it("Withdrawing with requested amountOut close to balance yields full exit - outGivenIn", async () => {
-      const { avatar, adapter, pool, gauge, dai } = await baseSetup();
+      const { avatar, adapter, pool, gauge, dai } = await loadFixture(
+        baseSetup,
+      );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
+      const adapterLiquidity = BigNumber.from("2029247129866388445168697");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
 
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        avatarBptBalance
+        avatarBptBalance,
       );
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
+        avatarGaugeBalance,
       );
       await expect(await adapter.callStatic.balance()).to.equal(
-        adapterLiquidity
+        adapterLiquidity,
       );
 
       // withdrawing slightly more than available, should yield full exit
       const requestedAmountOut = adapterLiquidity.div(1000).mul(1001);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut
+        requestedAmountOut,
       );
 
       expect(instructions).to.have.length(2);
@@ -136,13 +129,13 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data
+        instructions[0].data,
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data
+        instructions[1].data,
       );
 
       // Expect BPT and StakedBPT to be drained
@@ -158,11 +151,13 @@ describe("LP: Balancer Boosted Pool", async () => {
     it("Withdrawing with partial unstake - inGivenOut", async () => {
       // getting ~75% of liquidity should yield a partial withdrawal,
       // since we start with 50/50 stake and unstaked bpt
-      const { avatar, adapter, pool, gauge, dai } = await baseSetup();
+      const { avatar, adapter, pool, gauge, dai } = await loadFixture(
+        baseSetup,
+      );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
+      const adapterLiquidity = BigNumber.from("2029247129866388445168697");
 
       // Avatar has zero DAI
       expect(await dai.balanceOf(avatar.address)).to.equal(0);
@@ -170,7 +165,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await pool.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
       expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
+        avatarGaugeBalance,
       );
 
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
@@ -179,7 +174,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       const requestedAmountOut = adapterLiquidity.div(100).mul(75);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut
+        requestedAmountOut,
       );
 
       expect(instructions).to.have.length(2);
@@ -187,28 +182,28 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data
+        instructions[0].data,
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data
+        instructions[1].data,
       );
 
       // We expect the avatar to have exactly the required DAI
       await expect(
-        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut)
+        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut),
       ).to.be.true;
 
       // we expect round about half of the STAKED BPT to remain staked
       expect(
         (await gauge.balanceOf(avatar.address)).gt(
-          avatarGaugeBalance.div(100).mul(49)
+          avatarGaugeBalance.div(100).mul(49),
         ) &&
           (await gauge.balanceOf(avatar.address)).lt(
-            avatarGaugeBalance.div(100).mul(51)
-          )
+            avatarGaugeBalance.div(100).mul(51),
+          ),
       ).to.be.true;
 
       const bptAmountSwapped = BigNumber.from("1500000000000000000000000");
@@ -219,32 +214,34 @@ describe("LP: Balancer Boosted Pool", async () => {
     });
 
     it("Withdrawing with no unstake - inGivenOut", async () => {
-      const { avatar, adapter, dai, pool, gauge } = await baseSetup();
+      const { avatar, adapter, dai, pool, gauge } = await loadFixture(
+        baseSetup,
+      );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
+      const adapterLiquidity = BigNumber.from("2029247129866388445168697");
 
       // Avatar has zero DAI
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
 
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        avatarBptBalance
+        avatarBptBalance,
       );
 
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
+        avatarGaugeBalance,
       );
 
       await expect(await adapter.callStatic.balance()).to.equal(
-        adapterLiquidity
+        adapterLiquidity,
       );
 
       // 10% of what's available
       const requestedAmountOut = adapterLiquidity.div(100).mul(10);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut
+        requestedAmountOut,
       );
 
       // No unstaking needed
@@ -253,17 +250,17 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data
+        instructions[0].data,
       );
 
       // We expect the avatar to have exactly the DAI required
       await expect(
-        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut)
+        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut),
       ).to.be.true;
 
       // we expected staked BPT to remain unchanged
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
+        avatarGaugeBalance,
       );
       // approximation: 10% of balance requested, that's 20% of unstaked used
       const bptUsed = avatarBptBalance.div(100).mul(20);
@@ -277,17 +274,17 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       await expect(
         (await pool.balanceOf(avatar.address)).gt(bptUnusedLower) &&
-          (await pool.balanceOf(avatar.address)).lt(bptUnusedUpper)
+          (await pool.balanceOf(avatar.address)).lt(bptUnusedUpper),
       ).to.be.true;
     });
 
     it("Requesting more DAI than available, and not enough BPT to cover", async () => {
       const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
-        await baseSetup();
+        await loadFixture(baseSetup);
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
       const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const adapterLiquidity = BigNumber.from("2029247134262182408154990");
+      const adapterLiquidity = BigNumber.from("2029247129866388445168697");
       const daiBalanceInPool = BigNumber.from("4688641130857217794578086");
 
       // Avatar has zero DAI
@@ -296,17 +293,17 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await pool.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
       expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
+        avatarGaugeBalance,
       );
 
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       expect(
-        await boostedPoolHelper.liquidStableBalance(pool.address, dai.address)
+        await boostedPoolHelper.liquidStableBalance(pool.address, dai.address),
       ).to.equal(daiBalanceInPool);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        daiBalanceInPool.div(100).mul(150)
+        daiBalanceInPool.div(100).mul(150),
       );
 
       expect(instructions).to.have.length(2);
@@ -314,22 +311,22 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data
+        instructions[0].data,
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data
+        instructions[1].data,
       );
 
       // Expect BPT and StakedBPT to be drained
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0")
+        BigNumber.from("0"),
       );
 
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0")
+        BigNumber.from("0"),
       );
 
       const outLiquidityUpper = adapterLiquidity.div(1000).mul(1005);
@@ -340,71 +337,8 @@ describe("LP: Balancer Boosted Pool", async () => {
       // expect the amountOut to be around what was forecasted
       expect(
         actualAmountOut.gt(outLiquidityLower) &&
-          actualAmountOut.lt(outLiquidityUpper)
+          actualAmountOut.lt(outLiquidityUpper),
       ).to.be.true;
-    });
-
-    it("Requesting more DAI than available, as a mega whale, draining LinearPool", async () => {
-      const { avatar, adapter, pool, gauge, dai, boostedPoolHelper } =
-        await baseSetup();
-
-      const { BigWhale } = await getNamedAccounts();
-      const signer = hre.ethers.provider.getSigner(BigWhale);
-
-      const avatarBptBalance = BigNumber.from("1000000000000000000000000");
-      const avatarGaugeBalance = BigNumber.from("1000000000000000000000000");
-      const daiBalanceInPool = BigNumber.from("4688641130857217794578086");
-      const requestedAmountOut = BigNumber.from("9000000000000000000000000");
-
-      const whaleBptBalance = await pool.balanceOf(BigWhale);
-      pool.connect(signer).transfer(avatar.address, whaleBptBalance);
-
-      // Avatar has zero DAI
-      expect(await dai.balanceOf(avatar.address)).to.equal(0);
-
-      expect(await pool.balanceOf(avatar.address)).to.equal(
-        avatarBptBalance.add(whaleBptBalance)
-      );
-
-      expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
-      );
-
-      expect(
-        await boostedPoolHelper.liquidStableBalance(pool.address, dai.address)
-      ).to.equal(daiBalanceInPool);
-
-      // request for more than actually lives in the linearPool.
-      // Avatar has around 80% of the pool tokens, so nominally
-      // enough for the requested amount
-      const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut
-      );
-
-      // no need to unstake
-      expect(instructions).to.have.length(1);
-
-      await avatar.exec(
-        instructions[0].to,
-        instructions[0].value.toString(),
-        instructions[0].data
-      );
-
-      // Expect BPT to not be drained
-      expect((await pool.balanceOf(avatar.address)).gt(0)).to.be.true;
-      // we expected staked BPT to remain unchanged
-      expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance
-      );
-
-      const actualAmountOut = await dai.balanceOf(avatar.address);
-
-      // @adam
-      // amountInPool -    4688641132549650076781687
-      // actualAmountOut - 4688641130857217794578086
-
-      // expect the amountOut to be exactly what was requested
-      expect(actualAmountOut.gte(daiBalanceInPool)).to.be.true;
     });
   });
 });

@@ -1,5 +1,5 @@
 import { BigNumber, Contract } from "ethers";
-import hre, { ethers, getNamedAccounts } from "hardhat";
+import hre, { ethers } from "hardhat";
 
 import {
   DAI_ADDRESS,
@@ -12,9 +12,9 @@ import {
   vaultAbi,
   VAULT_ADDRESS,
 } from "../constants";
+import { deployBalancerLibs, getWhaleSigner } from "../setup";
 
 export async function setup() {
-  const { BigWhale } = await getNamedAccounts();
   const Avatar = await hre.ethers.getContractFactory("TestAvatar");
   const avatar = await Avatar.deploy();
   const adapter = await setupAdapter(avatar);
@@ -26,10 +26,8 @@ export async function setup() {
   const vault = new hre.ethers.Contract(
     VAULT_ADDRESS,
     vaultAbi,
-    hre.ethers.provider
+    hre.ethers.provider,
   );
-
-  const whaleSigner = hre.ethers.provider.getSigner(BigWhale);
 
   return {
     avatar,
@@ -38,19 +36,19 @@ export async function setup() {
     dai,
     tether,
     usdc,
-    whaleSigner,
   };
 }
 
 export async function setupAdapter(avatar: Contract) {
-  const { BigWhale } = await getNamedAccounts();
-  const Utils = await hre.deployments.get("Utils");
-  const StablePoolAdapter = await hre.deployments.get("StablePoolHelper");
+  const signer = await getWhaleSigner();
+  const BigWhale = signer.address;
+
+  const libraries = await deployBalancerLibs();
 
   const Adapter = await hre.ethers.getContractFactory("StablePoolAdapter", {
     libraries: {
-      Utils: Utils.address,
-      StablePoolHelper: StablePoolAdapter.address,
+      Utils: libraries.utils.address,
+      StablePoolHelper: libraries.stablePoolHelper.address,
     },
   });
   const adapter = await Adapter.deploy(
@@ -61,7 +59,7 @@ export async function setupAdapter(avatar: Contract) {
     // gauge
     STABLE_GAUGE_ADDRESS,
     // dai
-    DAI_ADDRESS
+    DAI_ADDRESS,
   );
 
   return adapter;
@@ -72,10 +70,9 @@ export async function fundAvatar(
   gauge: Contract,
   pool: Contract,
   gaugeAmount: BigNumber,
-  bptAmount: BigNumber
+  bptAmount: BigNumber,
 ): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
 
   await pool.connect(signer).transfer(avatar.address, bptAmount);
   await pool.connect(signer).approve(gauge.address, MAX_UINT256);
@@ -85,10 +82,10 @@ export async function fundAvatar(
 
 export async function joinPool(
   tokenIn: string,
-  amountIn: BigNumber
+  amountIn: BigNumber,
 ): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
+  const BigWhale = signer.address;
 
   const vault = new ethers.Contract(VAULT_ADDRESS, vaultAbi, signer);
 
@@ -107,7 +104,7 @@ export async function joinPool(
     maxAmountsIn: amountsIn,
     userData: ethers.utils.defaultAbiCoder.encode(
       ["uint256", "uint256[]", "uint256"],
-      [1, amountsIn, "0"]
+      [1, amountsIn, "0"],
     ),
     fromInternalBalance: false,
   });
@@ -117,10 +114,10 @@ export async function joinPool(
 
 export async function exitPool(
   tokenIn: string,
-  amountIn: BigNumber
+  amountIn: BigNumber,
 ): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
+  const BigWhale = signer.address;
 
   const vault = new ethers.Contract(VAULT_ADDRESS, vaultAbi, signer);
 
@@ -138,7 +135,7 @@ export async function exitPool(
     minAmountsOut: amountsOut,
     userData: ethers.utils.defaultAbiCoder.encode(
       ["uint256", "uint256", "uint256"],
-      [0, bptBalance, 1]
+      [0, bptBalance, 1],
     ),
     fromInternalBalance: false,
   });
@@ -147,7 +144,8 @@ export async function exitPool(
 }
 
 export async function printBalance() {
-  const { BigWhale } = await getNamedAccounts();
+  const signer = await getWhaleSigner();
+  const BigWhale = signer.address;
   const pool = await hre.ethers.getContractAt("ERC20", STABLE_POOL_ADDRESS);
 
   console.log(`Big Whale ${BigWhale} has pool`);
