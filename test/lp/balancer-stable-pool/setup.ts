@@ -105,10 +105,10 @@ export async function joinPool(
   const tx = await vault.connect(signer).joinPool(poolId, BigWhale, BigWhale, {
     assets: tokens,
     maxAmountsIn: amountsIn,
-    userData: ethers.utils.defaultAbiCoder.encode( 
-      ["uint256", "uint256[]", "uint256"], 
-      [1, amountsIn, "0"] 
-    ), 
+    userData: ethers.utils.defaultAbiCoder.encode(
+      ["uint256", "uint256[]", "uint256"],
+      [1, amountsIn, "0"]
+    ),
     fromInternalBalance: false,
   });
 

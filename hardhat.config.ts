@@ -4,7 +4,6 @@ import "solidity-coverage";
 import "hardhat-deploy";
 import "hardhat-gas-reporter";
 import "hardhat-contract-sizer";
-import "@nomicfoundation/hardhat-foundry";
 
 import dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
@@ -78,9 +77,6 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-      forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      },
     },
     mainnet: {
       ...sharedNetworkConfig,
