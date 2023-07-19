@@ -28,7 +28,7 @@ describe("DP: Maker", async () => {
     const DSProxy = await hre.ethers.getContractFactory("DSProxy");
     const dsProxy = await DSProxy.deploy(avatar.address);
     const DsProxyActions = await hre.ethers.getContractFactory(
-      "DssProxyActions",
+      "DssProxyActions"
     );
 
     const dsProxyActions = await DsProxyActions.deploy();
@@ -43,7 +43,7 @@ describe("DP: Maker", async () => {
       spotter.address, // spotter
       ratioTarget, // ratio target
       ratioTrigger, // ratio trigger
-      urn, // vault
+      urn // vault
     );
 
     return {
@@ -92,7 +92,7 @@ describe("DP: Maker", async () => {
 
       await adapter.transferOwnership(AddressOne);
       expect(adapter.setRatioTarget(42)).to.be.revertedWith(
-        "Ownable: caller is not the owner",
+        "Ownable: caller is not the owner"
       );
     });
     it("Sets ratioTarget", async () => {
@@ -109,7 +109,7 @@ describe("DP: Maker", async () => {
 
       await adapter.transferOwnership(AddressOne);
       expect(adapter.setRatioTrigger(42)).to.be.revertedWith(
-        "Ownable: caller is not the owner",
+        "Ownable: caller is not the owner"
       );
     });
     it("Sets ratioTrigger", async () => {
@@ -140,7 +140,7 @@ describe("DP: Maker", async () => {
     it.skip("Correctly encodes payment instructions", async () => {
       const { adapter, dsProxy, dai } = await loadFixture(baseSetup);
       const [allow, transfer] = await adapter.paymentInstructions(
-        expectedDelta,
+        expectedDelta
       );
       const expectedAllow = {
         to: dai.address,

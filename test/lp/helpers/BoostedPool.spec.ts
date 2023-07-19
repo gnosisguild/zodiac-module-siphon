@@ -42,7 +42,7 @@ describe("LP: Balancer Boosted Pool Helper", async () => {
         libraries: {
           BoostedPoolHelper: libraries.boostedPoolHelper.address,
         },
-      },
+      }
     );
     const boostedPoolHelper = await Helper.deploy();
 
@@ -65,7 +65,7 @@ describe("LP: Balancer Boosted Pool Helper", async () => {
       pool.address,
       USDC_ADDRESS,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     const amountOutQuery =
@@ -73,7 +73,7 @@ describe("LP: Balancer Boosted Pool Helper", async () => {
         pool.address,
         USDC_ADDRESS,
         amountIn,
-        TETHER_ADDRESS,
+        TETHER_ADDRESS
       );
 
     expect(amountOutCalc).to.equal(amountOutQuery);
@@ -89,14 +89,14 @@ describe("LP: Balancer Boosted Pool Helper", async () => {
         pool.address,
         USDC_ADDRESS,
         amountIn,
-        TETHER_ADDRESS,
+        TETHER_ADDRESS
       );
 
     const amountOutCalc = await boostedPoolHelper.calcStableOutGivenStableIn(
       pool.address,
       USDC_ADDRESS,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     expect(amountOutQuery).to.equal(amountOutCalc);
@@ -111,13 +111,13 @@ describe("LP: Balancer Boosted Pool Helper", async () => {
       await boostedPoolHelper.callStatic.queryStableOutGivenBptIn(
         pool.address,
         amountIn,
-        TETHER_ADDRESS,
+        TETHER_ADDRESS
       );
 
     const amountOutCalc = await boostedPoolHelper.calcStableOutGivenBptIn(
       pool.address,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     expect(amountOutQuery).to.equal(amountOutCalc);
@@ -134,13 +134,13 @@ describe("LP: Balancer Boosted Pool Helper", async () => {
       await boostedPoolHelper.callStatic.queryBptInGivenStableOut(
         pool.address,
         TETHER_ADDRESS,
-        amountOut,
+        amountOut
       );
 
     const amountOutCalc = await boostedPoolHelper.calcBptInGivenStableOut(
       pool.address,
       TETHER_ADDRESS,
-      amountOut,
+      amountOut
     );
 
     expect(amountOutQuery).to.equal(amountOutCalc);

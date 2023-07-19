@@ -47,14 +47,14 @@ async function setupAdapter(libraries: any, avatar: Contract) {
     // gauge
     BOOSTED_GAUGE_ADDRESS,
     // dai
-    DAI.main,
+    DAI.main
   );
 
   return adapter;
 }
 
 export async function setupFundWhale(
-  boostedGaugeTopHolders: string[],
+  boostedGaugeTopHolders: string[]
 ): Promise<void> {
   const signer = await getWhaleSigner();
   const BigWhale = await signer.address;
@@ -62,27 +62,27 @@ export async function setupFundWhale(
   const gauge = new hre.ethers.Contract(
     BOOSTED_GAUGE_ADDRESS,
     gaugeAbi,
-    signer,
+    signer
   );
 
   for (let i = 0; i < boostedGaugeTopHolders.length; i++) {
     await fundWithERC20(
       BOOSTED_GAUGE_ADDRESS,
       boostedGaugeTopHolders[i],
-      BigWhale,
+      BigWhale
     );
   }
 
   const balance: BigNumber = await gauge.balanceOf(BigWhale);
   await gauge["withdraw(uint256)"](
-    balance.sub(BigNumber.from("1000000000000000000000000")),
+    balance.sub(BigNumber.from("1000000000000000000000000"))
   );
 }
 
 export async function setupFundAvatar(
   avatar: Contract,
   gaugeAmount: BigNumber,
-  bptAmount: BigNumber,
+  bptAmount: BigNumber
 ): Promise<void> {
   const signer = await getWhaleSigner();
 
@@ -115,7 +115,7 @@ export async function setup() {
     tether,
     usdc,
     boostedPoolHelper: await deployBoostedPoolHelpeMock(
-      libraries.boostedPoolHelper.address,
+      libraries.boostedPoolHelper.address
     ),
   };
 }
@@ -123,7 +123,7 @@ export async function setup() {
 export async function investInPool(
   tokenIn: string,
   amountIn: BigNumber,
-  boostedPoolHelper: BoostedPoolHelperMock,
+  boostedPoolHelper: BoostedPoolHelperMock
 ): Promise<void> {
   const signer = await getWhaleSigner();
   const BigWhale = await signer.address;
@@ -135,19 +135,19 @@ export async function investInPool(
   const boostedPool = new ethers.Contract(
     BOOSTED_POOL_ADDRESS,
     linearPoolAbi,
-    signer,
+    signer
   );
   const boostedPoolId = await boostedPool.getPoolId();
 
   const linearPoolAddress = await boostedPoolHelper.findLinearPool(
     BOOSTED_POOL_ADDRESS,
-    tokenIn,
+    tokenIn
   );
 
   const linearPool = new ethers.Contract(
     linearPoolAddress,
     linearPoolAbi,
-    signer,
+    signer
   );
   const linearPoolId = await linearPool.getPoolId();
 
@@ -184,7 +184,7 @@ export async function investInPool(
       toInternalBalance: false,
     },
     ["-1", 0, amountIn],
-    BigNumber.from("999999999999999999"),
+    BigNumber.from("999999999999999999")
   );
 
   await tx.wait();

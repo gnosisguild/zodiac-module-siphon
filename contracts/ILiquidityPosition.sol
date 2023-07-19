@@ -12,7 +12,7 @@ interface ILiquidityPosition {
 
     function assessPostWithdraw() external returns (bool);
 
-    function withdrawalInstructions(uint256 amount)
-        external
-        returns (Transaction[] memory);
+    function withdrawalInstructions(
+        uint256 amount
+    ) external returns (Transaction[] memory);
 }

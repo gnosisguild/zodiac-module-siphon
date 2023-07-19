@@ -60,7 +60,7 @@ describe("LP: Balancer Stable Pool Helper", async () => {
       signer,
       stablePoolHelper: StablePoolHelper__factory.connect(
         libraries.stablePoolHelper.address,
-        signer,
+        signer
       ),
     };
   }
@@ -101,18 +101,18 @@ describe("LP: Balancer Stable Pool Helper", async () => {
       pool,
       USDC_ADDRESS,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     const amountOutFromMath = await stablePoolHelper.calcTokenOutGivenTokenIn(
       pool.address,
       USDC_ADDRESS,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     expect(amountOutFromQuery.toString()).to.equal(
-      amountOutFromMath.toString(),
+      amountOutFromMath.toString()
     );
   });
 
@@ -133,24 +133,24 @@ describe("LP: Balancer Stable Pool Helper", async () => {
       vault,
       pool,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     let amountOutFromMath = await stablePoolHelper.calcTokenOutGivenBptIn(
       pool.address,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     const outFromQueryTolerance = amountOutFromQuery.add(
-      amountOutFromQuery.div(10000),
+      amountOutFromQuery.div(10000)
     );
 
     // there might be due fees accumulated and consolidated, so it should be
     // only close enough
     expect(
       amountOutFromMath.lt(outFromQueryTolerance) &&
-        amountOutFromMath.gte(amountOutFromQuery),
+        amountOutFromMath.gte(amountOutFromQuery)
     ).to.be.true;
 
     // join the pool, consolidate fees
@@ -160,18 +160,18 @@ describe("LP: Balancer Stable Pool Helper", async () => {
       vault,
       pool,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     amountOutFromMath = await stablePoolHelper.calcTokenOutGivenBptIn(
       pool.address,
       amountIn,
-      TETHER_ADDRESS,
+      TETHER_ADDRESS
     );
 
     // after consolidation math and query are exactly the same
     expect(amountOutFromQuery.toString()).to.equal(
-      amountOutFromMath.toString(),
+      amountOutFromMath.toString()
     );
   });
 
@@ -186,22 +186,22 @@ describe("LP: Balancer Stable Pool Helper", async () => {
       vault,
       pool,
       USDC_ADDRESS,
-      amountOut,
+      amountOut
     );
 
     const amountOutFromMath = await stablePoolHelper.calcBptInGivenTokenOut(
       pool.address,
       USDC_ADDRESS,
-      amountOut,
+      amountOut
     );
 
     const outFromQueryTolerance = amountOutFromQuery.sub(
-      amountOutFromQuery.div(1000000),
+      amountOutFromQuery.div(1000000)
     );
 
     expect(
       amountOutFromMath.lte(amountOutFromQuery) &&
-        amountOutFromMath.gte(outFromQueryTolerance),
+        amountOutFromMath.gte(outFromQueryTolerance)
     ).to.be.true;
   });
 });
@@ -210,7 +210,7 @@ async function queryTokenOutGivenBptIn(
   vault: Contract,
   pool: Contract,
   bptAmountIn: string | BigNumber,
-  tokenOut: string,
+  tokenOut: string
 ): Promise<BigNumber> {
   const signer = await getWhaleSigner();
   const BigWhale = await signer.address;
@@ -218,7 +218,7 @@ async function queryTokenOutGivenBptIn(
   const helpers = new hre.ethers.Contract(
     "0x5aDDCCa35b7A0D07C74063c48700C8590E87864E",
     helpersAbi,
-    signer,
+    signer
   );
 
   const poolId = await pool.getPoolId();
@@ -230,7 +230,7 @@ async function queryTokenOutGivenBptIn(
     minAmountsOut: [0, 0, 0],
     userData: hre.ethers.utils.defaultAbiCoder.encode(
       ["uint256", "uint256", "uint256"],
-      [EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenOutIndex],
+      [EXACT_BPT_IN_FOR_ONE_TOKEN_OUT, bptAmountIn, tokenOutIndex]
     ),
     fromInternalBalance: false,
   });
@@ -242,7 +242,7 @@ async function queryBptInGivenTokenOut(
   vault: Contract,
   pool: Contract,
   tokenOut: string,
-  amountOut: string | BigNumber,
+  amountOut: string | BigNumber
 ): Promise<BigNumber> {
   const signer = await getWhaleSigner();
   const BigWhale = await signer.address;
@@ -250,7 +250,7 @@ async function queryBptInGivenTokenOut(
   const helpers = new hre.ethers.Contract(
     "0x5aDDCCa35b7A0D07C74063c48700C8590E87864E",
     helpersAbi,
-    signer,
+    signer
   );
 
   const poolId = await pool.getPoolId();
@@ -265,7 +265,7 @@ async function queryBptInGivenTokenOut(
     minAmountsOut: amountsOut,
     userData: hre.ethers.utils.defaultAbiCoder.encode(
       ["uint256", "uint256[]", "uint256"],
-      [BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, MAX_UINT256],
+      [BPT_IN_FOR_EXACT_TOKENS_OUT, amountsOut, MAX_UINT256]
     ),
     fromInternalBalance: false,
   });
@@ -278,7 +278,7 @@ async function queryTokenOutGivenTokenIn(
   pool: Contract,
   tokenIn: string,
   amountIn: string,
-  tokenOut: string,
+  tokenOut: string
 ): Promise<BigNumber> {
   const signer = await getWhaleSigner();
   const BigWhale = await signer.address;
@@ -306,7 +306,7 @@ async function queryTokenOutGivenTokenIn(
       fromInternalBalance: false,
       recipient: BigWhale,
       toInternalBalance: false,
-    },
+    }
   );
 
   return BigNumber.from("-1").mul(limits[tokenOutIndex]);

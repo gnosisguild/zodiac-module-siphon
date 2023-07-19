@@ -60,7 +60,7 @@ export async function fundWhaleWithStables(): Promise<void> {
 
 export async function fundWhaleWithBpt(
   gaugeAddress: string,
-  gaugeTopHolders: string[],
+  gaugeTopHolders: string[]
 ): Promise<void> {
   const signer = await getWhaleSigner();
   const BigWhale = await signer.address;
@@ -77,7 +77,7 @@ export async function fundWhaleWithBpt(
 export async function fundWithERC20(
   tokenAddress: string,
   from: string,
-  to: string,
+  to: string
 ): Promise<Contract> {
   const token = await hre.ethers.getContractAt("ERC20", tokenAddress);
 
@@ -95,7 +95,7 @@ export async function fundWithERC20(
 
 async function fundWhale(
   tokenAddress: string,
-  from: string,
+  from: string
 ): Promise<Contract> {
   const BigWhale = await (await getWhaleSigner()).address;
 
@@ -160,7 +160,7 @@ export async function deployBalancerLibs() {
     "StablePoolHelper",
     {
       libraries: { Utils: utils.address },
-    },
+    }
   );
   const stablePoolHelper = await StablePoolHelper.deploy();
 
@@ -168,7 +168,7 @@ export async function deployBalancerLibs() {
     "LinearPoolHelper",
     {
       libraries: { Utils: utils.address },
-    },
+    }
   );
   const linearPoolHelper = await LinearPoolHelper.deploy();
 
@@ -176,7 +176,7 @@ export async function deployBalancerLibs() {
     "StablePhantomPoolHelper",
     {
       libraries: { Utils: utils.address },
-    },
+    }
   );
   const stablePhantomPoolHelper = await StablePhantomPoolHelper.deploy();
 
@@ -188,12 +188,12 @@ export async function deployBalancerLibs() {
         LinearPoolHelper: linearPoolHelper.address,
         StablePhantomPoolHelper: stablePhantomPoolHelper.address,
       },
-    },
+    }
   );
   const boostedPoolHelper = await BoostedPoolHelper.deploy();
 
   const VaultQueryHelper = await hre.ethers.getContractFactory(
-    "VaultQueryHelper",
+    "VaultQueryHelper"
   );
   const vaultQueryHelper = await VaultQueryHelper.deploy();
 

@@ -31,11 +31,11 @@ const simulatePayment = async (): Promise<void> => {
   const whale = await hre.ethers.provider.getSigner(daiWhale);
   const dai = await hre.ethers.getContractAt(
     "TestToken",
-    "0x6b175474e89094c44da98b954eedeac495271d0f",
+    "0x6b175474e89094c44da98b954eedeac495271d0f"
   );
   const safe = await hre.ethers.getContractAt(
     "TestAvatar",
-    "0x849d52316331967b6ff1198e5e32a0eb168d039d",
+    "0x849d52316331967b6ff1198e5e32a0eb168d039d"
   );
   const whaleBalance = await dai.balanceOf(daiWhale);
   await dai.connect(whale).transfer(safe.address, whaleBalance);
@@ -49,11 +49,11 @@ const simulatePayment = async (): Promise<void> => {
   const urn = 27353;
   const cdpManager = await hre.ethers.getContractAt(
     "ICDPManager",
-    "0x5ef30b9986345249bc32d8928B7ee64DE9435E39",
+    "0x5ef30b9986345249bc32d8928B7ee64DE9435E39"
   );
   const spotter = await hre.ethers.getContractAt(
     "ISpotter",
-    "0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3",
+    "0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3"
   );
   const vatAddress = await cdpManager.vat();
   const vat = await hre.ethers.getContractAt("IVat", vatAddress);
@@ -79,7 +79,7 @@ const simulatePayment = async (): Promise<void> => {
     spotter.address, // spotter
     targetRatio, // ratio target
     triggerRatio, // ratio trigger
-    urn, // vault
+    urn // vault
   );
 
   // get delta and payment instructions
@@ -100,7 +100,7 @@ const simulatePayment = async (): Promise<void> => {
       approve.to,
       approve.value.toString(),
       approve.data,
-      approve.operation,
+      approve.operation
     );
   await safe
     .connect(dao)
@@ -108,7 +108,7 @@ const simulatePayment = async (): Promise<void> => {
       repay.to,
       repay.value.toString(),
       repay.data,
-      repay.operation,
+      repay.operation
     );
 
   // get updated Maker jazz

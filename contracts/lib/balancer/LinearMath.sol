@@ -288,19 +288,17 @@ library LinearMath {
         return wrappedBalance.sub(newWrappedBalance);
     }
 
-    function _calcInvariant(uint256 nominalMainBalance, uint256 wrappedBalance)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _calcInvariant(
+        uint256 nominalMainBalance,
+        uint256 wrappedBalance
+    ) internal pure returns (uint256) {
         return nominalMainBalance.add(wrappedBalance);
     }
 
-    function _toNominal(uint256 real, Params memory params)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _toNominal(
+        uint256 real,
+        Params memory params
+    ) internal pure returns (uint256) {
         // Fees are always rounded down: either direction would work but we need to be consistent, and rounding down
         // uses less gas.
 
@@ -315,11 +313,10 @@ library LinearMath {
         }
     }
 
-    function _fromNominal(uint256 nominal, Params memory params)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _fromNominal(
+        uint256 nominal,
+        Params memory params
+    ) internal pure returns (uint256) {
         // Since real = nominal + fees, rounding down fees is equivalent to rounding down real.
 
         if (nominal < params.lowerTarget) {

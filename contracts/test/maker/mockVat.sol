@@ -13,17 +13,9 @@ contract MockVat {
         return (ink, art);
     }
 
-    function ilks(bytes32)
-        external
-        view
-        returns (
-            uint256,
-            uint256,
-            uint256,
-            uint256,
-            uint256
-        )
-    {
+    function ilks(
+        bytes32
+    ) external view returns (uint256, uint256, uint256, uint256, uint256) {
         return (art, rate, spot, line, dust);
     }
 }

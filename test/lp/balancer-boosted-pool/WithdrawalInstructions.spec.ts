@@ -27,7 +27,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       await setupFundAvatar(
         avatar,
         BigNumber.from("1000000000000000000000000"),
-        BigNumber.from("1000000000000000000000000"),
+        BigNumber.from("1000000000000000000000000")
       );
 
       return {
@@ -42,7 +42,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
     it("Withdrawing more than available balance yields full exit - outGivenIn", async () => {
       const { avatar, adapter, pool, gauge, dai } = await loadFixture(
-        baseSetup,
+        baseSetup
       );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
@@ -55,7 +55,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await pool.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
       expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance,
+        avatarGaugeBalance
       );
 
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
@@ -64,7 +64,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       const requestedAmountOut = adapterLiquidity.mul(3);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut,
+        requestedAmountOut
       );
 
       expect(instructions).to.have.length(2);
@@ -72,22 +72,22 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data,
+        instructions[0].data
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data,
+        instructions[1].data
       );
 
       // Expect BPT and StakedBPT to be drained
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0"),
+        BigNumber.from("0")
       );
 
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0"),
+        BigNumber.from("0")
       );
 
       const actualAmountOut = await dai.balanceOf(avatar.address);
@@ -97,7 +97,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
     it("Withdrawing with requested amountOut close to balance yields full exit - outGivenIn", async () => {
       const { avatar, adapter, pool, gauge, dai } = await loadFixture(
-        baseSetup,
+        baseSetup
       );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
@@ -108,20 +108,20 @@ describe("LP: Balancer Boosted Pool", async () => {
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
 
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        avatarBptBalance,
+        avatarBptBalance
       );
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance,
+        avatarGaugeBalance
       );
       await expect(await adapter.callStatic.balance()).to.equal(
-        adapterLiquidity,
+        adapterLiquidity
       );
 
       // withdrawing slightly more than available, should yield full exit
       const requestedAmountOut = adapterLiquidity.div(1000).mul(1001);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut,
+        requestedAmountOut
       );
 
       expect(instructions).to.have.length(2);
@@ -129,13 +129,13 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data,
+        instructions[0].data
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data,
+        instructions[1].data
       );
 
       // Expect BPT and StakedBPT to be drained
@@ -152,7 +152,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       // getting ~75% of liquidity should yield a partial withdrawal,
       // since we start with 50/50 stake and unstaked bpt
       const { avatar, adapter, pool, gauge, dai } = await loadFixture(
-        baseSetup,
+        baseSetup
       );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
@@ -165,7 +165,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await pool.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
       expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance,
+        avatarGaugeBalance
       );
 
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
@@ -174,7 +174,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       const requestedAmountOut = adapterLiquidity.div(100).mul(75);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut,
+        requestedAmountOut
       );
 
       expect(instructions).to.have.length(2);
@@ -182,28 +182,28 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data,
+        instructions[0].data
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data,
+        instructions[1].data
       );
 
       // We expect the avatar to have exactly the required DAI
       await expect(
-        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut),
+        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut)
       ).to.be.true;
 
       // we expect round about half of the STAKED BPT to remain staked
       expect(
         (await gauge.balanceOf(avatar.address)).gt(
-          avatarGaugeBalance.div(100).mul(49),
+          avatarGaugeBalance.div(100).mul(49)
         ) &&
           (await gauge.balanceOf(avatar.address)).lt(
-            avatarGaugeBalance.div(100).mul(51),
-          ),
+            avatarGaugeBalance.div(100).mul(51)
+          )
       ).to.be.true;
 
       const bptAmountSwapped = BigNumber.from("1500000000000000000000000");
@@ -215,7 +215,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
     it("Withdrawing with no unstake - inGivenOut", async () => {
       const { avatar, adapter, dai, pool, gauge } = await loadFixture(
-        baseSetup,
+        baseSetup
       );
 
       const avatarBptBalance = BigNumber.from("1000000000000000000000000");
@@ -226,22 +226,22 @@ describe("LP: Balancer Boosted Pool", async () => {
       await expect(await dai.balanceOf(avatar.address)).to.equal(0);
 
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        avatarBptBalance,
+        avatarBptBalance
       );
 
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance,
+        avatarGaugeBalance
       );
 
       await expect(await adapter.callStatic.balance()).to.equal(
-        adapterLiquidity,
+        adapterLiquidity
       );
 
       // 10% of what's available
       const requestedAmountOut = adapterLiquidity.div(100).mul(10);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        requestedAmountOut,
+        requestedAmountOut
       );
 
       // No unstaking needed
@@ -250,17 +250,17 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data,
+        instructions[0].data
       );
 
       // We expect the avatar to have exactly the DAI required
       await expect(
-        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut),
+        (await dai.balanceOf(avatar.address)).gte(requestedAmountOut)
       ).to.be.true;
 
       // we expected staked BPT to remain unchanged
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance,
+        avatarGaugeBalance
       );
       // approximation: 10% of balance requested, that's 20% of unstaked used
       const bptUsed = avatarBptBalance.div(100).mul(20);
@@ -274,7 +274,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
       await expect(
         (await pool.balanceOf(avatar.address)).gt(bptUnusedLower) &&
-          (await pool.balanceOf(avatar.address)).lt(bptUnusedUpper),
+          (await pool.balanceOf(avatar.address)).lt(bptUnusedUpper)
       ).to.be.true;
     });
 
@@ -293,17 +293,17 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await pool.balanceOf(avatar.address)).to.equal(avatarBptBalance);
 
       expect(await gauge.balanceOf(avatar.address)).to.equal(
-        avatarGaugeBalance,
+        avatarGaugeBalance
       );
 
       expect(await adapter.callStatic.balance()).to.equal(adapterLiquidity);
 
       expect(
-        await boostedPoolHelper.liquidStableBalance(pool.address, dai.address),
+        await boostedPoolHelper.liquidStableBalance(pool.address, dai.address)
       ).to.equal(daiBalanceInPool);
 
       const instructions = await adapter.callStatic.withdrawalInstructions(
-        daiBalanceInPool.div(100).mul(150),
+        daiBalanceInPool.div(100).mul(150)
       );
 
       expect(instructions).to.have.length(2);
@@ -311,22 +311,22 @@ describe("LP: Balancer Boosted Pool", async () => {
       await avatar.exec(
         instructions[0].to,
         instructions[0].value.toString(),
-        instructions[0].data,
+        instructions[0].data
       );
 
       await avatar.exec(
         instructions[1].to,
         instructions[1].value.toString(),
-        instructions[1].data,
+        instructions[1].data
       );
 
       // Expect BPT and StakedBPT to be drained
       await expect(await pool.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0"),
+        BigNumber.from("0")
       );
 
       await expect(await gauge.balanceOf(avatar.address)).to.equal(
-        BigNumber.from("0"),
+        BigNumber.from("0")
       );
 
       const outLiquidityUpper = adapterLiquidity.div(1000).mul(1005);
@@ -337,7 +337,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       // expect the amountOut to be around what was forecasted
       expect(
         actualAmountOut.gt(outLiquidityLower) &&
-          actualAmountOut.lt(outLiquidityUpper),
+          actualAmountOut.lt(outLiquidityUpper)
       ).to.be.true;
     });
   });

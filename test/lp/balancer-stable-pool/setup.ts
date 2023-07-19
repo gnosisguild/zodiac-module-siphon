@@ -26,7 +26,7 @@ export async function setup() {
   const vault = new hre.ethers.Contract(
     VAULT_ADDRESS,
     vaultAbi,
-    hre.ethers.provider,
+    hre.ethers.provider
   );
 
   return {
@@ -59,7 +59,7 @@ export async function setupAdapter(avatar: Contract) {
     // gauge
     STABLE_GAUGE_ADDRESS,
     // dai
-    DAI_ADDRESS,
+    DAI_ADDRESS
   );
 
   return adapter;
@@ -70,7 +70,7 @@ export async function fundAvatar(
   gauge: Contract,
   pool: Contract,
   gaugeAmount: BigNumber,
-  bptAmount: BigNumber,
+  bptAmount: BigNumber
 ): Promise<void> {
   const signer = await getWhaleSigner();
 
@@ -82,7 +82,7 @@ export async function fundAvatar(
 
 export async function joinPool(
   tokenIn: string,
-  amountIn: BigNumber,
+  amountIn: BigNumber
 ): Promise<void> {
   const signer = await getWhaleSigner();
   const BigWhale = signer.address;
@@ -104,7 +104,7 @@ export async function joinPool(
     maxAmountsIn: amountsIn,
     userData: ethers.utils.defaultAbiCoder.encode(
       ["uint256", "uint256[]", "uint256"],
-      [1, amountsIn, "0"],
+      [1, amountsIn, "0"]
     ),
     fromInternalBalance: false,
   });
@@ -114,7 +114,7 @@ export async function joinPool(
 
 export async function exitPool(
   tokenIn: string,
-  amountIn: BigNumber,
+  amountIn: BigNumber
 ): Promise<void> {
   const signer = await getWhaleSigner();
   const BigWhale = signer.address;
@@ -135,7 +135,7 @@ export async function exitPool(
     minAmountsOut: amountsOut,
     userData: ethers.utils.defaultAbiCoder.encode(
       ["uint256", "uint256", "uint256"],
-      [0, bptBalance, 1],
+      [0, bptBalance, 1]
     ),
     fromInternalBalance: false,
   });

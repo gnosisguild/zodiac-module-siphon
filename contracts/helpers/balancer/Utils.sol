@@ -11,22 +11,20 @@ import "./Interop.sol";
 library Utils {
     using FixedPoint for uint256;
 
-    function addSwapFee(address pool, uint256 amount)
-        public
-        view
-        returns (uint256)
-    {
+    function addSwapFee(
+        address pool,
+        uint256 amount
+    ) public view returns (uint256) {
         return
             amount.divUp(
                 FixedPoint.ONE.sub(IPool(pool).getSwapFeePercentage())
             );
     }
 
-    function subtractSwapFee(address pool, uint256 amount)
-        external
-        view
-        returns (uint256)
-    {
+    function subtractSwapFee(
+        address pool,
+        uint256 amount
+    ) external view returns (uint256) {
         uint256 feeAmount = amount.mulUp(IPool(pool).getSwapFeePercentage());
         return amount.sub(feeAmount);
     }
@@ -40,22 +38,20 @@ library Utils {
         }
     }
 
-    function upscale(uint256 amount, uint256 scalingFactor)
-        external
-        pure
-        returns (uint256)
-    {
+    function upscale(
+        uint256 amount,
+        uint256 scalingFactor
+    ) external pure returns (uint256) {
         return FixedPoint.mulDown(amount, scalingFactor);
     }
 
-    function inferAndUpscale(uint256 amount, address token)
-        public
-        view
-        returns (uint256)
-    {
+    function inferAndUpscale(
+        uint256 amount,
+        address token
+    ) public view returns (uint256) {
         // Tokens with more than 18 decimals are not supported.
         uint256 scalingFactor = FixedPoint.ONE *
-            10**Math.sub(18, ERC20(token).decimals());
+            10 ** Math.sub(18, ERC20(token).decimals());
 
         return FixedPoint.mulDown(amount, scalingFactor);
     }
@@ -91,38 +87,34 @@ library Utils {
         }
     }
 
-    function downscaleUp(uint256 amount, uint256 scalingFactor)
-        external
-        pure
-        returns (uint256)
-    {
+    function downscaleUp(
+        uint256 amount,
+        uint256 scalingFactor
+    ) external pure returns (uint256) {
         return FixedPoint.divUp(amount, scalingFactor);
     }
 
-    function downscaleDown(uint256 amount, uint256 scalingFactor)
-        external
-        pure
-        returns (uint256)
-    {
+    function downscaleDown(
+        uint256 amount,
+        uint256 scalingFactor
+    ) external pure returns (uint256) {
         return FixedPoint.divDown(amount, scalingFactor);
     }
 
-    function balancesWithoutBpt(uint256[] memory balances, uint256 bptIndex)
-        internal
-        pure
-        returns (uint256[] memory result)
-    {
+    function balancesWithoutBpt(
+        uint256[] memory balances,
+        uint256 bptIndex
+    ) internal pure returns (uint256[] memory result) {
         result = new uint256[](balances.length - 1);
         for (uint256 i = 0; i < result.length; i++) {
             result[i] = balances[i < bptIndex ? i : i + 1];
         }
     }
 
-    function indexWithoutBpt(uint256 tokenIndex, uint256 bptIndex)
-        external
-        pure
-        returns (uint256)
-    {
+    function indexWithoutBpt(
+        uint256 tokenIndex,
+        uint256 bptIndex
+    ) external pure returns (uint256) {
         return tokenIndex < bptIndex ? tokenIndex : tokenIndex - 1;
     }
 
@@ -132,14 +124,13 @@ library Utils {
 
         // Tokens with more than 18 decimals are not supported.
         uint256 decimalsDifference = Math.sub(18, tokenDecimals);
-        return FixedPoint.ONE * 10**decimalsDifference;
+        return FixedPoint.ONE * 10 ** decimalsDifference;
     }
 
-    function indexOf(address[] memory arr, address searchFor)
-        external
-        pure
-        returns (uint256)
-    {
+    function indexOf(
+        address[] memory arr,
+        address searchFor
+    ) external pure returns (uint256) {
         for (uint256 i = 0; i < arr.length; i++) {
             if (arr[i] == searchFor) {
                 return i;

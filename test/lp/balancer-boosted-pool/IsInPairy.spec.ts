@@ -46,7 +46,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       await setupFundAvatar(
         avatar,
         BigNumber.from("1000000000000000000000000"),
-        BigNumber.from("1000000000000000000000000"),
+        BigNumber.from("1000000000000000000000000")
       );
 
       return {
@@ -73,7 +73,7 @@ describe("LP: Balancer Boosted Pool", async () => {
 
     it("is not in parity for an unbalanced pool", async () => {
       const { adapter, pool, dai, boostedPoolHelper } = await loadFixture(
-        baseSetup,
+        baseSetup
       );
 
       const signer = await getWhaleSigner();
@@ -82,7 +82,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       expect(await adapter.callStatic.isInParity()).to.equal(true);
 
       const before = await boostedPoolHelper.callStatic.calcPrices(
-        pool.address,
+        pool.address
       );
       const pricesBefore = pricesToReadable(before);
 
@@ -95,7 +95,7 @@ describe("LP: Balancer Boosted Pool", async () => {
       await investInPool(
         dai.address,
         BigNumber.from("200000000000000000000000000"),
-        boostedPoolHelper,
+        boostedPoolHelper
       );
 
       const after = await boostedPoolHelper.callStatic.calcPrices(pool.address);
@@ -119,13 +119,13 @@ describe("LP: Balancer Boosted Pool", async () => {
 function pricesToReadable([tokens, prices]: [string[], BigNumber[]]) {
   return {
     dai: priceToReadable(
-      prices[tokens.findIndex((token) => getAddress(token) === DAI_ADDRESS)],
+      prices[tokens.findIndex((token) => getAddress(token) === DAI_ADDRESS)]
     ),
     usdc: priceToReadable(
-      prices[tokens.findIndex((token) => getAddress(token) === USDC_ADDRESS)],
+      prices[tokens.findIndex((token) => getAddress(token) === USDC_ADDRESS)]
     ),
     tether: priceToReadable(
-      prices[tokens.findIndex((token) => getAddress(token) === TETHER_ADDRESS)],
+      prices[tokens.findIndex((token) => getAddress(token) === TETHER_ADDRESS)]
     ),
   };
 }

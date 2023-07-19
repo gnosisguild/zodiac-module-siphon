@@ -11,11 +11,10 @@ import "./Utils.sol";
 library LinearPoolHelper {
     using FixedPoint for uint256;
 
-    function calcMainOutGivenBptIn(address pool, uint256 bptAmountIn)
-        external
-        view
-        returns (uint256)
-    {
+    function calcMainOutGivenBptIn(
+        address pool,
+        uint256 bptAmountIn
+    ) external view returns (uint256) {
         (
             uint256[] memory balances,
             uint256[] memory scalingFactors,
@@ -42,11 +41,10 @@ library LinearPoolHelper {
         return Utils.downscaleDown(amountOut, scalingFactors[mainIndex]);
     }
 
-    function calcBptOutGivenMainIn(address pool, uint256 mainAmountIn)
-        external
-        view
-        returns (uint256)
-    {
+    function calcBptOutGivenMainIn(
+        address pool,
+        uint256 mainAmountIn
+    ) external view returns (uint256) {
         (
             uint256[] memory balances,
             uint256[] memory scalingFactors,
@@ -76,11 +74,10 @@ library LinearPoolHelper {
         return Utils.downscaleDown(amountOut, scalingFactors[bptIndex]);
     }
 
-    function calcBptInGivenMainOut(address pool, uint256 mainAmountOut)
-        external
-        view
-        returns (uint256)
-    {
+    function calcBptInGivenMainOut(
+        address pool,
+        uint256 mainAmountOut
+    ) external view returns (uint256) {
         (
             uint256[] memory balances,
             uint256[] memory scalingFactors,
@@ -122,7 +119,9 @@ library LinearPoolHelper {
         return balance > lowerTarget ? balance - lowerTarget : 0;
     }
 
-    function query(address _pool)
+    function query(
+        address _pool
+    )
         private
         view
         returns (

@@ -6,7 +6,9 @@ import "./Transaction.sol";
 abstract contract MultisendEncoder {
     address internal multisend;
 
-    function encodeMultisend(Transaction[] memory txs)
+    function encodeMultisend(
+        Transaction[] memory txs
+    )
         public
         view
         returns (
