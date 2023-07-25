@@ -35,59 +35,47 @@ interface IConvexRewards {
     function balanceOf(address) external view returns (uint256);
 }
 
-interface ICompoundToken {
-    function exchangeRateStored() external view returns (uint256);
-}
-
-contract LendingPoolAdapter is ILiquidityPosition {
+abstract contract LendingPoolAdapter is ILiquidityPosition {
     uint256 public constant scale = 10 ** 18;
 
     address public immutable investor;
 
+    IERC20 public immutable lpToken;
     ICurvePool public immutable pool;
-    IERC20 public immutable token;
     ICurveDeposit public immutable deposit;
     IConvexRewards public immutable rewards;
 
     // a stable coin
     IERC20 public immutable underlyingTokenOut;
     // the stable coin's lent version
-    ICompoundToken public immutable lendingTokenOut;
+    address public immutable lendingTokenOut;
     int128 public immutable indexOut;
     uint256 public immutable scaleFactorOut;
 
     // a stable coin
     IERC20 public immutable underlyingTokenOther;
     // the stable coin's lent version
-    ICompoundToken public immutable lendingTokenOther;
+    address public immutable lendingTokenOther;
     int128 public immutable indexOther;
     uint256 public immutable scaleFactorOther;
 
-    constructor(address _investor) {
+    constructor(address _investor, Config memory config) {
         investor = _investor;
 
-        pool = ICurvePool(0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56);
-        token = IERC20(0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2);
-        deposit = ICurveDeposit(0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06);
-        rewards = IConvexRewards(0xf34DFF761145FF0B05e917811d488B441F33a968);
+        lpToken = config.lpToken;
+        pool = config.pool;
+        deposit = config.deposit;
+        rewards = config.rewards;
 
-        // DAI
-        lendingTokenOut = ICompoundToken(
-            0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643
-        );
-        underlyingTokenOut = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
-        indexOut = 0;
-        scaleFactorOut = 1;
+        lendingTokenOut = config.lendingTokenOut;
+        underlyingTokenOut = config.underlyingTokenOut;
+        indexOut = config.indexOut;
+        scaleFactorOut = config.scaleFactorOut;
 
-        // USDC
-        lendingTokenOther = ICompoundToken(
-            0x39AA39c021dfbaE8faC545936693aC917d5E7563
-        );
-        underlyingTokenOther = IERC20(
-            0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
-        );
-        indexOther = 1;
-        scaleFactorOther = 10 ** 12;
+        lendingTokenOther = config.lendingTokenOther;
+        underlyingTokenOther = config.underlyingTokenOther;
+        indexOther = config.indexOther;
+        scaleFactorOther = config.scaleFactorOther;
     }
 
     function asset() public view override returns (address) {
@@ -139,7 +127,7 @@ contract LendingPoolAdapter is ILiquidityPosition {
         view
         returns (uint256 unstakedBalance, uint256 stakedBalance)
     {
-        unstakedBalance = token.balanceOf(investor);
+        unstakedBalance = lpToken.balanceOf(investor);
         stakedBalance = rewards.balanceOf(investor);
     }
 
@@ -157,7 +145,7 @@ contract LendingPoolAdapter is ILiquidityPosition {
         uint256 percent90 = _div(9, 10);
 
         uint256 effectiveLiquidRatio = _mul(percent90, liquidRatio);
-        uint256 totalSupply = token.totalSupply();
+        uint256 totalSupply = lpToken.totalSupply();
 
         return _mul(effectiveLiquidRatio, totalSupply);
     }
@@ -183,7 +171,7 @@ contract LendingPoolAdapter is ILiquidityPosition {
     ) internal view returns (Transaction memory) {
         return
             Transaction({
-                to: address(token),
+                to: address(lpToken),
                 value: 0,
                 data: abi.encodeWithSelector(
                     IERC20.approve.selector,
@@ -245,24 +233,35 @@ contract LendingPoolAdapter is ILiquidityPosition {
     }
 
     function _calcUnderlyingTokenWrap(
-        ICompoundToken cToken,
+        address lendingToken,
         uint256 amount
-    ) public view returns (uint256) {
-        return (amount * scale) / cToken.exchangeRateStored();
-    }
+    ) public view virtual returns (uint256);
 
     function _calcLendingTokenUnwrap(
-        ICompoundToken cToken,
+        address lendingToken,
         uint256 amount
-    ) public view returns (uint256) {
-        return (amount * cToken.exchangeRateStored()) / scale;
-    }
+    ) public view virtual returns (uint256);
 
-    function _div(uint256 n, uint256 d) public pure returns (uint256) {
+    function _div(uint256 n, uint256 d) internal pure returns (uint256) {
         return (n * scale) / d;
     }
 
-    function _mul(uint256 val, uint256 ratio) public pure returns (uint256) {
+    function _mul(uint256 val, uint256 ratio) internal pure returns (uint256) {
         return (val * ratio) / scale;
+    }
+
+    struct Config {
+        IERC20 lpToken;
+        ICurvePool pool;
+        ICurveDeposit deposit;
+        IConvexRewards rewards;
+        IERC20 underlyingTokenOut;
+        address lendingTokenOut;
+        int128 indexOut;
+        uint256 scaleFactorOut;
+        IERC20 underlyingTokenOther;
+        address lendingTokenOther;
+        int128 indexOther;
+        uint256 scaleFactorOther;
     }
 }
