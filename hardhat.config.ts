@@ -40,7 +40,7 @@ if (PK) {
 
 if (["rinkeby", "mainnet"].includes(argv.network) && INFURA_KEY === undefined) {
   throw new Error(
-    `Could not find Infura key in env, unable to connect to network ${argv.network}`,
+    `Could not find Infura key in env, unable to connect to network ${argv.network}`
   );
 }
 
@@ -48,7 +48,6 @@ const config: HardhatUserConfig = {
   paths: {
     artifacts: "build/artifacts",
     cache: "build/cache",
-    deploy: "src/deploy",
     sources: "contracts",
   },
   solidity: {
@@ -99,12 +98,6 @@ const config: HardhatUserConfig = {
       ...sharedNetworkConfig,
       url: "https://rpc-mainnet.maticvigil.com",
     },
-  },
-  namedAccounts: {
-    deployer: 0,
-    BigWhale: 1,
-    daiWhale: "0xc08a8a9f809107c5a7be6d90e315e4012c99f39a",
-    gnosisDAO: "0x0DA0C3e52C977Ed3cBc641fF02DD271c3ED55aFe",
   },
   mocha: {
     timeout: 2000000,

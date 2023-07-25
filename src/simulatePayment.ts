@@ -15,7 +15,7 @@ const simulatePayment = async (): Promise<void> => {
       {
         forking: {
           jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-          blockNumber: 15000000,
+          blockNumber: 17741542,
         },
       },
     ],
@@ -76,6 +76,7 @@ const simulatePayment = async (): Promise<void> => {
     "0x9759A6Ac90977b93B58547b4A71c78317f391A28", // daiJoin
     proxy, // dsProxy
     "0x82ecd135dce65fbc6dbdd0e4237e0af93ffd5038", // dsProxyActions
+    gnosisDAO,
     spotter.address, // spotter
     targetRatio, // ratio target
     triggerRatio, // ratio trigger
