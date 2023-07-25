@@ -39,7 +39,7 @@ interface ICompoundToken {
     function exchangeRateStored() external view returns (uint256);
 }
 
-contract CurveDebtPoolAdapter is ILiquidityPosition {
+contract LendingPoolAdapter is ILiquidityPosition {
     uint256 public constant scale = 10 ** 18;
 
     address public immutable investor;
@@ -49,15 +49,19 @@ contract CurveDebtPoolAdapter is ILiquidityPosition {
     ICurveDeposit public immutable deposit;
     IConvexRewards public immutable rewards;
 
-    IERC20 public immutable stableOut;
-    ICompoundToken public immutable cTokenOut;
+    // a stable coin
+    IERC20 public immutable underlyingTokenOut;
+    // the stable coin's lent version
+    ICompoundToken public immutable lendingTokenOut;
     int128 public immutable indexOut;
-    uint256 public immutable scaleFactorStableOut;
+    uint256 public immutable scaleFactorOut;
 
-    IERC20 public immutable stableOther;
-    ICompoundToken public immutable cTokenOther;
+    // a stable coin
+    IERC20 public immutable underlyingTokenOther;
+    // the stable coin's lent version
+    ICompoundToken public immutable lendingTokenOther;
     int128 public immutable indexOther;
-    uint256 public immutable scaleFactorStableOther;
+    uint256 public immutable scaleFactorOther;
 
     constructor(address _investor) {
         investor = _investor;
@@ -68,22 +72,26 @@ contract CurveDebtPoolAdapter is ILiquidityPosition {
         rewards = IConvexRewards(0xf34DFF761145FF0B05e917811d488B441F33a968);
 
         // DAI
-        cTokenOut = ICompoundToken(0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643);
-        stableOut = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+        lendingTokenOut = ICompoundToken(
+            0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643
+        );
+        underlyingTokenOut = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
         indexOut = 0;
-        scaleFactorStableOut = 1;
+        scaleFactorOut = 1;
 
         // USDC
-        cTokenOther = ICompoundToken(
+        lendingTokenOther = ICompoundToken(
             0x39AA39c021dfbaE8faC545936693aC917d5E7563
         );
-        stableOther = IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+        underlyingTokenOther = IERC20(
+            0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+        );
         indexOther = 1;
-        scaleFactorStableOther = 10 ** 12;
+        scaleFactorOther = 10 ** 12;
     }
 
     function asset() public view override returns (address) {
-        return address(stableOut);
+        return address(underlyingTokenOut);
     }
 
     function balance() public view override returns (uint256) {
@@ -95,6 +103,7 @@ contract CurveDebtPoolAdapter is ILiquidityPosition {
     }
 
     function assessPostWithdraw() public pure override returns (bool) {
+        // TODO
         return true;
     }
 
@@ -203,8 +212,11 @@ contract CurveDebtPoolAdapter is ILiquidityPosition {
     }
 
     function _calcAmountIn(uint256 amountOut) public view returns (uint256) {
-        uint256 cTokenAmount = _calcCompoundWrap(cTokenOut, amountOut);
-        return pool.calc_token_amount([cTokenAmount, 0], false);
+        uint256 lendingTokenAmount = _calcUnderlyingTokenWrap(
+            lendingTokenOut,
+            amountOut
+        );
+        return pool.calc_token_amount([lendingTokenAmount, 0], false);
     }
 
     /*
@@ -215,27 +227,31 @@ contract CurveDebtPoolAdapter is ILiquidityPosition {
      * Whale has 30% of the pool
      */
     function _calcLiquidRatio() public view returns (uint256) {
-        uint256 reservesStableOut = _calcCompoundUnwrap(
-            cTokenOut,
+        uint256 reservesUnderlyingOut = _calcLendingTokenUnwrap(
+            lendingTokenOut,
             pool.balances(indexOut)
-        ) * scaleFactorStableOut;
+        ) * scaleFactorOut;
 
-        uint256 reservesStableOther = _calcCompoundUnwrap(
-            cTokenOther,
+        uint256 reservesUnderlyingOther = _calcLendingTokenUnwrap(
+            lendingTokenOther,
             pool.balances(indexOther)
-        ) * scaleFactorStableOther;
+        ) * scaleFactorOther;
 
-        return _div(reservesStableOut, reservesStableOut + reservesStableOther);
+        return
+            _div(
+                reservesUnderlyingOut,
+                reservesUnderlyingOut + reservesUnderlyingOther
+            );
     }
 
-    function _calcCompoundWrap(
+    function _calcUnderlyingTokenWrap(
         ICompoundToken cToken,
         uint256 amount
     ) public view returns (uint256) {
         return (amount * scale) / cToken.exchangeRateStored();
     }
 
-    function _calcCompoundUnwrap(
+    function _calcLendingTokenUnwrap(
         ICompoundToken cToken,
         uint256 amount
     ) public view returns (uint256) {
