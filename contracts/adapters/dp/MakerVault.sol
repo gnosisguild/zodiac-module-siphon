@@ -55,6 +55,10 @@ interface IVat {
         );
 }
 
+interface IERC20 {
+    function decimals() external view returns (uint256);
+}
+
 // temporary: marked abstract to silence compiler
 contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
     event SetRatioTarget(uint256 ratioTarget);
@@ -157,12 +161,13 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
      * @notice the target collateralization ratio
      * @dev the target collateralization ratio is the ratio of collateral to debt
      *  that we want to maintain. If the collateralization ratio is below the target
-     *  ratio, we will need to add more collateral to the Vault.
+     *  ratio, we will need to add more collateral to the Vault. Represented as ray.
      */
     uint256 public ratioTarget;
 
     /**
      * @notice the trigger threshold for the collateralization ratio
+     * @dev represented as ray - 27 decimal places.
      */
     uint256 public ratioTrigger;
 
@@ -258,7 +263,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         );
     }
 
-    // @dev Sets the target callateralization ratio for the vault.
+    // @dev Sets the target collateralization ratio for the vault.
     // @param _ratio Target collateralization ratio for the vault.
     // @notice Can only be called by owner.
     function setRatioTarget(uint256 _ratio) external onlyOwner {
@@ -266,16 +271,17 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         emit SetRatioTarget(ratioTarget);
     }
 
-    // @dev Sets the collateralization ratio below which debt repayment can be triggered.
-    // @param _ratio The ratio below which debt repayment can be triggered.
-    // @notice Can only be called by owner.
+    /// @dev Sets the collateralization ratio below which debt repayment can be triggered.
+    /// @param _ratio The ratio below which debt repayment can be triggered.
+    /// @notice Can only be called by owner.
     function setRatioTrigger(uint256 _ratio) external onlyOwner {
         ratioTrigger = _ratio;
         emit SetRatioTrigger(ratioTrigger);
     }
 
-    // @dev Returns the current collateralization ratio of the vault as ray.
-    function ratio() public view override returns (uint256) {
+    /// @notice Returns the current collateralization ratio of the vault.
+    /// @return ratio as fixed point ray (27 decimals)
+    function _ratio_old() public view returns (uint256) {
         // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
         // or
         // Collateralization Ratio = collateral in vault * spot price * liquidation ratio / (dait debt)
@@ -296,7 +302,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
 
     // @dev Returns the amount of Dai that should be repaid to bring vault to target ratio.
     // @return Amount of Dai necessary that should be repaid to bring vault to target ratio.
-    function delta() external view override returns (uint256 amount) {
+    function _delta_old() external view returns (uint256 amount) {
         uint256 art; //outstanding stablecoin debt @audit - will fail if art is 0
         uint256 ink; // collateral balance
         uint256 mat; // the liquidation ratio
@@ -313,7 +319,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         amount = debt - debtTarget;
     }
 
-    // @dev Returns whether the current debt positions needs rebelance.
+    /// @dev Returns whether the current debt positions needs rebelance.
     function needsRebalancing() public view override returns (bool) {
         require(
             ratioTrigger != 0 && ratioTarget != 0 && ratioTrigger < ratioTarget,
@@ -325,9 +331,9 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         return currentRatio < ratioTrigger;
     }
 
-    // @dev Returns the call data to repay debt on the vault.
-    // @param amount The amount of tokens to repay to the vault.
-    // @return result array of transactions to be executed to repay debt.
+    /// @dev Returns the call data to repay debt on the vault.
+    /// @param amount The amount of tokens to repay to the vault.
+    /// @return result array of transactions to be executed to repay debt.
     function paymentInstructions(
         uint256 amount
     ) external view override returns (Transaction[] memory) {
@@ -360,5 +366,115 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         });
 
         return result;
+    }
+
+    /// @notice Returns the current collateralization ratio of the vault.
+    /// @return ratio as fixed point ray (27 decimals)
+    function ratio() public view override returns (uint256) {
+        // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
+        // or
+        // Collateralization Ratio = collateral in vault * spot price * liquidation ratio / (dait debt)
+        // or
+        // r = (c * s * l) / d
+
+        // wad - 18 decimal places
+        // ray - 27 decimal places
+        // rad - 45 decimal places
+        // struct Vat.Ilk {
+        //     uint256 Art;   // Total Normalised Debt     [wad]
+        //     uint256 rate;  // Accumulated Rates         [ray]
+        //     uint256 spot;  // Price with Safety Margin  [ray]
+        //     uint256 line;  // Debt Ceiling              [rad]
+        //     uint256 dust;  // Urn Debt Floor            [rad]
+        // }
+        // struct Vat.Urn {
+        //     uint256 ink;   // Locked Collateral  [wad]
+        //     uint256 art;   // Normalised Debt    [wad]
+        // }
+        // struct Spot.Ilk {
+        //     PipLike pip;  // Price Feed
+        //     uint256 mat;  // Liquidation ratio [ray]
+        // }
+
+        return _div(collateralValue(), debtValue());
+    }
+
+    /// @notice returns the amount of asset that should be repaid to
+    /// bring vault to target ratio.
+    /// @return amount fixed point scaled to asset decimals
+    function delta() external view override returns (uint256) {
+        uint256 debt = debtValue();
+
+        // r = (c * s * l) / d
+        uint256 debtTarget = _div(collateralValue(), ratioTarget);
+
+        // from ray to ERC20.decimals
+        uint256 scaleDownFactor = 27 - IERC20(asset).decimals();
+
+        return _scaleDown(debt - debtTarget, scaleDownFactor);
+    }
+
+    /// @notice calculates collateral value in the vault, priced in base asset
+    /// @dev formula is Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat
+    /// @return collateralValue as fixed point ray (27 decimals)
+    function collateralValue() public view returns (uint256) {
+        // get Ilk (collateral type)
+        // rate -> stablecoin debt multiplier (accumulated stability fees)
+        // spot -> collateral price with safety margin, i.e. the maximum stablecoin allowed per unit of collateral
+        (, , uint256 spot, , ) = IVat(vat).ilks(ilk);
+
+        // get Urn (collateral deposit)
+        // ink -> collateral balance
+        (uint256 ink, ) = IVat(vat).urns(ilk, urnHandler);
+
+        // Get Spot (price oracle)
+        // mat -> the liquidation ratio
+        (, uint256 mat) = ISpotter(spotter).ilks(ilk);
+
+        return _mul(_mul(_wadToRay(ink), spot), mat);
+    }
+
+    /// @notice calculates total outstanding debt
+    /// @dev formula is Vat.urn.art * Vat.ilk.rate
+    /// @return debtValue as ray (27 decimals)
+    function debtValue() public view returns (uint256) {
+        // get Ilk (collateral type)
+        // rate -> stablecoin debt multiplier (accumulated stability fees)
+        // spot -> collateral price with safety margin, i.e. the maximum stablecoin allowed per unit of collateral
+        (, uint256 rate, , , ) = IVat(vat).ilks(ilk);
+
+        // get Urn (collateral deposit)
+        // art -> outstanding stablecoin debt
+        (, uint256 art) = IVat(vat).urns(ilk, urnHandler);
+
+        return _mul(_wadToRay(art), rate);
+    }
+
+    /// @dev multiplies two fixed point integers in ray scale
+    function _mul(uint256 x, uint256 y) internal pure returns (uint256) {
+        return (x * y) / RAY;
+    }
+
+    /// @dev multiplies two fixed point integers in ray scale
+    function _div(uint256 x, uint256 y) internal pure returns (uint256) {
+        return (x * RAY) / y;
+    }
+
+    function _wadToRay(uint256 _wad) internal pure returns (uint256) {
+        return _scaleUp(_wad, 27 - 18);
+    }
+
+    function _scaleUp(
+        uint256 _ray,
+        uint256 decimals
+    ) internal pure returns (uint256) {
+        return _ray * (10 ** (decimals));
+    }
+
+    function _scaleDown(
+        uint256 x,
+        uint256 decimals
+    ) internal pure returns (uint256) {
+        return x / (10 ** (decimals));
     }
 }
