@@ -7,7 +7,7 @@ interface ICompoundToken {
     function exchangeRateStored() external view returns (uint256);
 }
 
-contract CurveCompoundAdapter is LendingPoolAdapter {
+contract ConvexCompoundAdapter is LendingPoolAdapter {
     constructor(address investor) LendingPoolAdapter(investor, getConfig()) {}
 
     function getConfig() private pure returns (Config memory) {
@@ -38,14 +38,16 @@ contract CurveCompoundAdapter is LendingPoolAdapter {
             });
     }
 
-    function _calcUnderlyingTokenWrap(
+    // underlyingToLending
+    function _calcUnderlyingToLending(
         address cToken,
         uint256 amount
     ) public view override returns (uint256) {
         return _div(amount, ICompoundToken(cToken).exchangeRateStored());
     }
 
-    function _calcLendingTokenUnwrap(
+    // lendingToUnderlying
+    function _calcLendingToUnderlying(
         address cToken,
         uint256 amount
     ) public view override returns (uint256) {

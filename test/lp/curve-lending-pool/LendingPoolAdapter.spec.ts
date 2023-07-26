@@ -6,7 +6,7 @@ import hre from "hardhat";
 import { fork, forkReset } from "../setup";
 import {
   CToken__factory,
-  CurveCompoundAdapter,
+  ConvexCompoundAdapter,
   ERC20__factory,
   MockRewardPool__factory,
 } from "../../../typechain-types";
@@ -37,7 +37,9 @@ describe("LendingPoolAdapter", async () => {
 
     await highjack(GNO_SAFE, signer.address);
 
-    const Adapter = await hre.ethers.getContractFactory("CurveCompoundAdapter");
+    const Adapter = await hre.ethers.getContractFactory(
+      "ConvexCompoundAdapter"
+    );
     const adapter = await Adapter.deploy(GNO_SAFE);
 
     await executeFlushERC20(GNO_SAFE, dai.address);
@@ -61,11 +63,11 @@ describe("LendingPoolAdapter", async () => {
 
     const balance = await lpToken.balanceOf(GNO_SAFE);
 
-    // flush 50% of the pool position such that we are not majority holder
+    // flush 80% of the pool position such that we are not majority holder
     await executeFlushERC20(
       GNO_SAFE,
       lpToken.address,
-      balance.mul(50).div(100)
+      balance.mul(80).div(100)
     );
 
     expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
@@ -108,8 +110,8 @@ describe("LendingPoolAdapter", async () => {
 
     const balance = await rewards.balanceOf(GNO_SAFE);
 
-    // flush 50% of the pool position such that we are not majority holder
-    await executeLeaveStake(GNO_SAFE, balance.mul(50).div(100));
+    // flush 80% of the pool position such that we are not majority holder
+    await executeLeaveStake(GNO_SAFE, balance.mul(80).div(100));
     await executeFlushERC20(GNO_SAFE, lpToken.address);
 
     expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
@@ -213,7 +215,7 @@ async function getCTokens() {
   return { cusdc, cdai, usdc, dai };
 }
 
-async function isLptBalanceCapped(adapter: CurveCompoundAdapter) {
+async function isLptBalanceCapped(adapter: ConvexCompoundAdapter) {
   const [unstakedBalance, stakedBalance] = await adapter.lptBalances();
   const effectiveBalance = await adapter.effectiveLptBalance();
 

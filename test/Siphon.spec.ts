@@ -25,7 +25,7 @@ describe("Siphon", async () => {
     const safe = await highjack(GNO_SAFE, signer.address);
 
     const LiquidityAdapter = await hre.ethers.getContractFactory(
-      "CurveCompoundAdapter"
+      "ConvexCompoundAdapter"
     );
     const liquidityAdapter = await LiquidityAdapter.deploy(GNO_SAFE);
 

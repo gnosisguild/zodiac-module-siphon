@@ -141,16 +141,9 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
         (uint256 unstakedBalance, uint256 stakedBalance) = lptBalances();
 
         uint256 total = unstakedBalance + stakedBalance;
-        uint256 cap = getLiquidLptAmount();
+        uint256 cap = _calcMaxAmountIn();
 
         return total > cap ? cap : total;
-    }
-
-    function getLiquidLptAmount() public view returns (uint256) {
-        uint256 liquidRatio = _calcLiquidRatio();
-        uint256 effectiveLiquidRatio = _mul(_div(90, 100), liquidRatio);
-
-        return _mul(effectiveLiquidRatio, lpToken.totalSupply());
     }
 
     function _encodeUnstake(
@@ -202,53 +195,59 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
             });
     }
 
+    /// @dev calculates lptAmountIn given assetAmountOut
     function _calcAmountInGivenOut(
-        uint256 assetAmountOut
+        uint256 amountOut
     ) internal view returns (uint256) {
-        uint256 amountAvailable = balance();
-        assert(assetAmountOut <= amountAvailable);
+        uint256 assetAmountAvailable = balance();
+        assert(amountOut <= assetAmountAvailable);
 
-        uint256 ratio = _div(assetAmountOut, amountAvailable);
+        uint256 ratio = _div(amountOut, assetAmountAvailable);
         return _mul(ratio, effectiveLptBalance());
     }
 
+    /// @dev calculates assetAmountOut given lptAmountIn
     function _calcAmountOutGivenIn(
-        uint256 lptAmountIn
+        uint256 amountIn
     ) internal view returns (uint256) {
-        return deposit.calc_withdraw_one_coin(lptAmountIn, indexOut);
+        return deposit.calc_withdraw_one_coin(amountIn, indexOut);
     }
 
     /*
-     * Determines the maximum ratio of the pool that can the withdrawn in out token
-     * Used to determine the effective LPBalance. Example:
+     * Determines the maximum LPToken amount that can be used for withdraw
+     * Useful as a whale could be sitting on a too BPT position. Example:
      * OutToken in reserves 20%
      * OtherToken in reserves 80%
-     * Whale has 30% of the pool
+     * Whale has 30% of the pool LPToken
      */
-    function _calcLiquidRatio() public view returns (uint256) {
-        uint256 reservesUnderlyingOut = _calcLendingTokenUnwrap(
+    function _calcMaxAmountIn() public view returns (uint256) {
+        uint256 reservesUnderlyingOut = _calcLendingToUnderlying(
             lendingTokenOut,
             pool.balances(indexOut)
         ) * scaleFactorOut;
 
-        uint256 reservesUnderlyingOther = _calcLendingTokenUnwrap(
+        uint256 reservesUnderlyingOther = _calcLendingToUnderlying(
             lendingTokenOther,
             pool.balances(indexOther)
         ) * scaleFactorOther;
 
-        return
-            _div(
-                reservesUnderlyingOut,
-                reservesUnderlyingOut + reservesUnderlyingOther
-            );
+        uint256 liquidRatio = _div(
+            reservesUnderlyingOut,
+            reservesUnderlyingOut + reservesUnderlyingOther
+        );
+
+        // safety buffer, only allow half
+        liquidRatio = liquidRatio / 2;
+
+        return _mul(liquidRatio, lpToken.totalSupply());
     }
 
-    function _calcUnderlyingTokenWrap(
+    function _calcUnderlyingToLending(
         address lendingToken,
         uint256 amount
     ) public view virtual returns (uint256);
 
-    function _calcLendingTokenUnwrap(
+    function _calcLendingToUnderlying(
         address lendingToken,
         uint256 amount
     ) public view virtual returns (uint256);
