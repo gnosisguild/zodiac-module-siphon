@@ -50,7 +50,7 @@ export async function execPopulatedTransaction(
   );
 }
 
-async function execTransaction(
+export async function execTransaction(
   safeAddress: string,
   { to, value, data, operation }: ExecTransactionParams,
   signer: SignerWithAddress
@@ -80,7 +80,7 @@ async function execTransaction(
   return signer.sendTransaction(tx);
 }
 
-export function sign(
+function sign(
   safeAddress: string,
   { to, value, data, operation }: ExecTransactionParams,
   nonce: BigNumberish,

@@ -18,12 +18,20 @@ interface ICurveDeposit {
 }
 
 interface ICurvePool {
-    function calc_token_amount(
-        uint256[2] memory amounts,
-        bool deposit
-    ) external view returns (uint256);
 
     function balances(int128 i) external view returns (uint256);
+
+    function fee() external view returns (uint256);
+
+    function get_dy(
+        int128 i,
+        int128 j,
+        uint256 dx
+    ) external view returns (uint256);
+
+    function exchange(int128 i, int128 j, uint256 dx, uint256 minDy) external;
+
+    function remove_liquidity(uint256 amount, uint256[2] memory) external;
 }
 
 interface IConvexRewards {
@@ -45,16 +53,14 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
     ICurveDeposit public immutable deposit;
     IConvexRewards public immutable rewards;
 
-    // a stable coin
+    // Out
     IERC20 public immutable underlyingTokenOut;
-    // the stable coin's lent version
     address public immutable lendingTokenOut;
     int128 public immutable indexOut;
     uint256 public immutable scaleFactorOut;
 
-    // a stable coin
+    // Other
     IERC20 public immutable underlyingTokenOther;
-    // the stable coin's lent version
     address public immutable lendingTokenOther;
     int128 public immutable indexOther;
     uint256 public immutable scaleFactorOther;
@@ -83,7 +89,7 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
     }
 
     function balance() public view override returns (uint256) {
-        return deposit.calc_withdraw_one_coin(effectiveLptBalance(), indexOut);
+        return _calcAmountOutGivenIn(effectiveLptBalance());
     }
 
     function assessPreWithdraw() public pure override returns (bool) {
@@ -101,7 +107,7 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
         uint256 amountOut = balance() > requestedAmountOut
             ? requestedAmountOut
             : balance();
-        uint256 amountIn = _calcAmountIn(amountOut);
+        uint256 amountIn = _calcAmountInGivenOut(amountOut);
 
         (uint256 unstakedBalance, ) = lptBalances();
         uint256 amountToUnstake = amountIn > unstakedBalance
@@ -134,20 +140,17 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
     function effectiveLptBalance() public view returns (uint256) {
         (uint256 unstakedBalance, uint256 stakedBalance) = lptBalances();
 
-        uint256 lptBalance = unstakedBalance + stakedBalance;
-        uint256 lptLiquidAmount = getLiquidLptAmount();
+        uint256 total = unstakedBalance + stakedBalance;
+        uint256 cap = getLiquidLptAmount();
 
-        return lptBalance > lptLiquidAmount ? lptLiquidAmount : lptBalance;
+        return total > cap ? cap : total;
     }
 
     function getLiquidLptAmount() public view returns (uint256) {
         uint256 liquidRatio = _calcLiquidRatio();
-        uint256 percent90 = _div(9, 10);
+        uint256 effectiveLiquidRatio = _mul(_div(90, 100), liquidRatio);
 
-        uint256 effectiveLiquidRatio = _mul(percent90, liquidRatio);
-        uint256 totalSupply = lpToken.totalSupply();
-
-        return _mul(effectiveLiquidRatio, totalSupply);
+        return _mul(effectiveLiquidRatio, lpToken.totalSupply());
     }
 
     function _encodeUnstake(
@@ -199,12 +202,20 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
             });
     }
 
-    function _calcAmountIn(uint256 amountOut) public view returns (uint256) {
-        uint256 lendingTokenAmount = _calcUnderlyingTokenWrap(
-            lendingTokenOut,
-            amountOut
-        );
-        return pool.calc_token_amount([lendingTokenAmount, 0], false);
+    function _calcAmountInGivenOut(
+        uint256 assetAmountOut
+    ) internal view returns (uint256) {
+        uint256 amountAvailable = balance();
+        assert(assetAmountOut <= amountAvailable);
+
+        uint256 ratio = _div(assetAmountOut, amountAvailable);
+        return _mul(ratio, effectiveLptBalance());
+    }
+
+    function _calcAmountOutGivenIn(
+        uint256 lptAmountIn
+    ) internal view returns (uint256) {
+        return deposit.calc_withdraw_one_coin(lptAmountIn, indexOut);
     }
 
     /*
@@ -242,12 +253,12 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
         uint256 amount
     ) public view virtual returns (uint256);
 
-    function _div(uint256 n, uint256 d) internal pure returns (uint256) {
-        return (n * scale) / d;
+    function _div(uint256 x, uint256 y) internal pure returns (uint256) {
+        return (x * scale) / y;
     }
 
-    function _mul(uint256 val, uint256 ratio) internal pure returns (uint256) {
-        return (val * ratio) / scale;
+    function _mul(uint256 x, uint256 y) internal pure returns (uint256) {
+        return (x * y) / scale;
     }
 
     struct Config {

@@ -42,13 +42,13 @@ contract CurveCompoundAdapter is LendingPoolAdapter {
         address cToken,
         uint256 amount
     ) public view override returns (uint256) {
-        return (amount * scale) / ICompoundToken(cToken).exchangeRateStored();
+        return _div(amount, ICompoundToken(cToken).exchangeRateStored());
     }
 
     function _calcLendingTokenUnwrap(
         address cToken,
         uint256 amount
     ) public view override returns (uint256) {
-        return (amount * ICompoundToken(cToken).exchangeRateStored()) / scale;
+        return _mul(amount, ICompoundToken(cToken).exchangeRateStored());
     }
 }
