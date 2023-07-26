@@ -17,12 +17,13 @@ import {
 } from "../../safe";
 import { expect } from "chai";
 import { TransactionStructOutput } from "../../../typechain-types/contracts/IDebtPosition";
+import { formatUnits, parseUnits } from "ethers/lib/utils";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 const CURVE_LP_TOKEN = "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2";
 const CONVEX_REWARDS_POOL = "0xf34DFF761145FF0B05e917811d488B441F33a968";
 
-describe("LendingPoolAdapter", async () => {
+describe.only("LendingPoolAdapter", async () => {
   before(async () => {
     await fork(17741542);
   });
@@ -61,46 +62,39 @@ describe("LendingPoolAdapter", async () => {
 
     await executeLeaveStake(GNO_SAFE);
 
-    const balance = await lpToken.balanceOf(GNO_SAFE);
-
     // flush 80% of the pool position such that we are not majority holder
     await executeFlushERC20(
       GNO_SAFE,
       lpToken.address,
-      balance.mul(80).div(100)
+      (await lpToken.balanceOf(GNO_SAFE)).mul(80).div(100)
     );
 
-    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
-    expect(await rewards.balanceOf(GNO_SAFE)).to.equal(0);
+    // ensure not a capped whale
     expect(await isLptBalanceCapped(adapter)).to.be.false;
 
-    const balancesBefore = await adapter.lptBalances();
-    const expectedAmountOut = await adapter.balance();
+    expect(await lpToken.balanceOf(GNO_SAFE)).greaterThan(0);
+    expect(await rewards.balanceOf(GNO_SAFE)).to.equal(0);
+    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
 
-    const instructions = await adapter.withdrawalInstructions(
-      expectedAmountOut
+    const balance = await adapter.balance();
+    await executeInstructions(
+      GNO_SAFE,
+      await adapter.withdrawalInstructions(balance),
+      signer
     );
 
-    await executeInstructions(GNO_SAFE, instructions, signer);
+    // no dust left in the adapter
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.equal(0);
+    // still nothing at convex
+    expect(await rewards.balanceOf(GNO_SAFE)).to.equal(0);
 
-    const balancesAfter = await adapter.lptBalances();
+    const amountOut = balance;
     const actualAmountOut = await dai.balanceOf(GNO_SAFE);
 
-    // // balance unstaked before
-    const balanceUnstakedBefore = balancesBefore[0];
-    const balanceUnstakedAfter = balancesAfter[0];
-    expect(balanceUnstakedBefore.gt(balanceUnstakedAfter)).to.be.true;
-
-    const balanceStakedBefore = balancesBefore[1];
-    const balanceStakedAfter = balancesAfter[1];
-    expect(balanceStakedBefore).to.equal(0);
-    expect(balanceStakedAfter).to.equal(0);
-
-    const oneBasisPoint = expectedAmountOut.div(10000);
-    expect(
-      actualAmountOut.gt(expectedAmountOut.sub(oneBasisPoint)) &&
-        actualAmountOut.lt(expectedAmountOut.add(oneBasisPoint))
-    ).to.be.true;
+    // one tenth of a basis point skew - expect it to be close to the requested amount
+    const skew = amountOut.div(100000);
+    expect(actualAmountOut).to.be.greaterThan(amountOut.sub(skew));
+    expect(actualAmountOut).to.be.lessThan(amountOut.add(skew));
   });
 
   it("withdraws from staked only", async () => {
@@ -108,54 +102,189 @@ describe("LendingPoolAdapter", async () => {
     const { adapter, rewards, lpToken } = await loadFixture(setup);
     const { dai } = await getCTokens();
 
-    const balance = await rewards.balanceOf(GNO_SAFE);
-
-    // flush 80% of the pool position such that we are not majority holder
-    await executeLeaveStake(GNO_SAFE, balance.mul(80).div(100));
+    // flush 80% of the pool position such that we are not a whale
+    await executeLeaveStake(
+      GNO_SAFE,
+      (await rewards.balanceOf(GNO_SAFE)).mul(80).div(100)
+    );
+    // flush all LPT
     await executeFlushERC20(GNO_SAFE, lpToken.address);
 
-    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
-    expect(await rewards.balanceOf(GNO_SAFE)).to.be.greaterThan(0);
+    // ensure its not capped (balance bellow maxAmountIn)
     expect(await isLptBalanceCapped(adapter)).to.be.false;
 
-    const balancesBefore = await adapter.lptBalances();
-    const expectedAmountOut = await adapter.balance();
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.equal(0);
+    expect(await rewards.balanceOf(GNO_SAFE)).greaterThan(0);
+    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
 
-    const instructions = await adapter.withdrawalInstructions(
-      expectedAmountOut
+    const balance = await adapter.balance();
+    await executeInstructions(
+      GNO_SAFE,
+      await adapter.withdrawalInstructions(balance),
+      signer
     );
 
-    await executeInstructions(GNO_SAFE, instructions, signer);
+    // no dust left in the adapter
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.equal(0);
+    // full withdraw from convex
+    expect(await rewards.balanceOf(GNO_SAFE)).to.equal(0);
 
-    const balancesAfter = await adapter.lptBalances();
+    const amountOut = balance;
     const actualAmountOut = await dai.balanceOf(GNO_SAFE);
 
-    // // balance unstaked before
-    const balanceUnstakedBefore = balancesBefore[0];
-    const balanceUnstakedAfter = balancesAfter[0];
-    expect(balanceUnstakedBefore).to.equal(0);
-    expect(balanceUnstakedAfter).to.equal(0);
-
-    const balanceStakedBefore = balancesBefore[1];
-    const balanceStakedAfter = balancesAfter[1];
-    expect(balanceStakedBefore).to.be.greaterThan(balanceStakedAfter);
-
-    const oneBasisPoint = expectedAmountOut.div(10000);
+    // one tenth of a basis point skew - expect it to be close to the requested amount
+    const skew = amountOut.div(100000);
     expect(
-      actualAmountOut.gt(expectedAmountOut.sub(oneBasisPoint)) &&
-        actualAmountOut.lt(expectedAmountOut.add(oneBasisPoint))
+      actualAmountOut.gt(amountOut.sub(skew)) &&
+        actualAmountOut.lt(amountOut.add(skew))
     ).to.be.true;
   });
 
-  it("withdraws from staked and unstaked");
+  it("withdraws from staked and unstaked", async () => {
+    const [signer] = await hre.ethers.getSigners();
+    const { adapter, rewards, lpToken } = await loadFixture(setup);
+    const { dai } = await getCTokens();
 
-  it("does not withdraw more than effective LptBalance");
+    await executeFlushERC20(GNO_SAFE, lpToken.address);
 
-  it("Whale: small withdraw is adequately rounded");
+    // leave 20% of the staked rewards
+    await executeLeaveStake(
+      GNO_SAFE,
+      (await rewards.balanceOf(GNO_SAFE)).mul(80).div(100)
+    );
+    // leave 10% of the lpToken freshly unstaked
+    await executeFlushERC20(
+      GNO_SAFE,
+      lpToken.address,
+      (await lpToken.balanceOf(GNO_SAFE)).mul(90).div(100)
+    );
 
-  it("Whale: big withdraw is adequately rounded");
+    // ensure its not capped (balance bellow maxAmountIn)
+    expect(await isLptBalanceCapped(adapter)).to.be.false;
 
-  it("Fish: small withdraw is adequately rounded");
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.be.greaterThan(0);
+    expect(await rewards.balanceOf(GNO_SAFE)).to.be.greaterThan(0);
+    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
+
+    const balance = await adapter.balance();
+    await executeInstructions(
+      GNO_SAFE,
+      await adapter.withdrawalInstructions(balance),
+      signer
+    );
+
+    // no dust left in the adapter
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.equal(0);
+    // full withdraw from convex
+    expect(await rewards.balanceOf(GNO_SAFE)).to.equal(0);
+
+    const amountOut = balance;
+    const actualAmountOut = await dai.balanceOf(GNO_SAFE);
+
+    // one tenth of a basis point skew - expect it to be close to the requested amount
+    const skew = amountOut.div(100000);
+    expect(actualAmountOut).to.be.greaterThan(amountOut.sub(skew));
+    expect(actualAmountOut).to.be.lessThan(amountOut.add(skew));
+  });
+
+  it("does not withdraw more than effective LptBalance", async () => {
+    const [signer] = await hre.ethers.getSigners();
+    const { adapter, rewards, lpToken } = await loadFixture(setup);
+    const { dai } = await getCTokens();
+
+    await executeFlushERC20(GNO_SAFE, lpToken.address);
+
+    // ensure that it is capped (balance bellow maxAmountIn)
+    expect(await isLptBalanceCapped(adapter)).to.be.true;
+
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.be.equal(0);
+    expect(await rewards.balanceOf(GNO_SAFE)).to.be.greaterThan(0);
+    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
+
+    const balance = await adapter.balance();
+    await executeInstructions(
+      GNO_SAFE,
+      await adapter.withdrawalInstructions(balance),
+      signer
+    );
+
+    // no dust in the form of LPToken left in the safe
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.be.equal(0);
+    // check that some convex stake still remains
+    expect(await rewards.balanceOf(GNO_SAFE)).to.be.greaterThan(0);
+
+    const amountOut = balance;
+    const actualAmountOut = await dai.balanceOf(GNO_SAFE);
+
+    // one tenth of a basis point skew - expect it to be close to the requested amount
+    const skew = amountOut.div(100000);
+    expect(actualAmountOut).to.be.greaterThan(amountOut.sub(skew));
+    expect(actualAmountOut).to.be.lessThan(amountOut.add(skew));
+  });
+
+  it("Whale: small withdraw is close enough to requested", async () => {
+    const [signer] = await hre.ethers.getSigners();
+    const { adapter, rewards, lpToken } = await loadFixture(setup);
+    const { dai } = await getCTokens();
+
+    // ensure its not capped (balance bellow maxAmountIn)
+    expect(await isLptBalanceCapped(adapter)).to.be.true;
+
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.be.equal(0);
+    expect(await rewards.balanceOf(GNO_SAFE)).to.be.greaterThan(0);
+    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
+
+    const amountOut = parseUnits("100", 18);
+    await executeInstructions(
+      GNO_SAFE,
+      await adapter.withdrawalInstructions(amountOut),
+      signer
+    );
+
+    const actualAmountOut = await dai.balanceOf(GNO_SAFE);
+
+    const skew = amountOut.div(1000);
+    expect(actualAmountOut).to.be.greaterThan(amountOut.sub(skew));
+    expect(actualAmountOut).to.be.lessThan(amountOut.add(skew));
+  });
+
+  it("Fish: small withdraw is close enough to requested", async () => {
+    const [signer] = await hre.ethers.getSigners();
+    const { adapter, rewards, lpToken } = await loadFixture(setup);
+    const { dai } = await getCTokens();
+
+    // leave 99.9% of the staked rewards
+    await executeLeaveStake(
+      GNO_SAFE,
+      (await rewards.balanceOf(GNO_SAFE)).mul(999).div(1000)
+    );
+    //flush all the LPTokens freshly freed
+    await executeFlushERC20(GNO_SAFE, lpToken.address);
+
+    // ensure its not capped (balance bellow maxAmountIn)
+    expect(await isLptBalanceCapped(adapter)).to.be.false;
+
+    const balance = await adapter.balance();
+    expect(balance).to.be.lessThan(parseUnits("3000", 18));
+
+    expect(await lpToken.balanceOf(GNO_SAFE)).to.be.equal(0);
+    expect(await rewards.balanceOf(GNO_SAFE)).to.be.greaterThan(0);
+    expect(await dai.balanceOf(GNO_SAFE)).to.equal(0);
+
+    const amountOut = parseUnits("1000", 18);
+    await executeInstructions(
+      GNO_SAFE,
+      await adapter.withdrawalInstructions(amountOut),
+      signer
+    );
+
+    const actualAmountOut = await dai.balanceOf(GNO_SAFE);
+
+    // one tenth of a basis point skew - expect it to be close to the requested amount
+    const skew = amountOut.div(100000);
+    expect(actualAmountOut).to.be.greaterThan(amountOut.sub(skew));
+    expect(actualAmountOut).to.be.lessThan(amountOut.add(skew));
+  });
 });
 
 async function executeInstructions(
