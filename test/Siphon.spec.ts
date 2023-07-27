@@ -30,16 +30,11 @@ describe("Siphon", async () => {
     const liquidityAdapter = await LiquidityAdapter.deploy(GNO_SAFE);
 
     const DebtAdapter = await hre.ethers.getContractFactory(
-      "MakerVaultAdapter"
+      "MakerDaiVaultAdapter"
     );
     const debtAdapter = await DebtAdapter.deploy(
-      "0x6b175474e89094c44da98b954eedeac495271d0f",
-      "0x5ef30b9986345249bc32d8928B7ee64DE9435E39",
-      "0x9759A6Ac90977b93B58547b4A71c78317f391A28",
       "0xD758500ddEc05172aaA035911387C8E0e789CF6a",
-      "0x82ecd135dce65fbc6dbdd0e4237e0af93ffd5038",
       "0x0DA0C3e52C977Ed3cBc641fF02DD271c3ED55aFe",
-      "0x65C79fcB50Ca1594B025960e539eD7A9a6D434A3",
       BigNumber.from("5861789575712043409055978289"),
       BigNumber.from("5382188610426512584678670975"),
       27353

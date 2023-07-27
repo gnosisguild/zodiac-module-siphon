@@ -32,7 +32,9 @@ describe("DP: Maker", async () => {
     );
 
     const dsProxyActions = await DsProxyActions.deploy();
-    const Adapter = await hre.ethers.getContractFactory("MakerVaultAdapter");
+    const Adapter = await hre.ethers.getContractFactory(
+      "MakerTestVaultAdapter"
+    );
     const adapter = await Adapter.deploy(
       dai.address, // asset
       cdpManager.address, // cdpManager

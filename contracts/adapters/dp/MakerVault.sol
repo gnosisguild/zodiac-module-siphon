@@ -56,7 +56,7 @@ interface IVat {
 }
 
 // temporary: marked abstract to silence compiler
-contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
+abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
     event AdapterSetup(
@@ -172,7 +172,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
      */
     uint256 public vault;
 
-    constructor(
+    function _setUp(
         address _asset,
         address _cdpManager,
         address _daiJoin,
@@ -183,49 +183,7 @@ contract MakerVaultAdapter is IDebtPosition, FactoryFriendly {
         uint256 _ratioTarget,
         uint256 _ratioTrigger,
         uint256 _vault
-    ) {
-        bytes memory initParams = abi.encode(
-            _asset,
-            _cdpManager,
-            _daiJoin,
-            _dsProxy,
-            _dsProxyActions,
-            _owner,
-            _spotter,
-            _ratioTarget,
-            _ratioTrigger,
-            _vault
-        );
-        setUp(initParams);
-    }
-
-    function setUp(bytes memory initParams) public override initializer {
-        (
-            address _asset,
-            address _cdpManager,
-            address _daiJoin,
-            address _dsProxy,
-            address _dsProxyActions,
-            address _owner,
-            address _spotter,
-            uint256 _ratioTarget,
-            uint256 _ratioTrigger,
-            uint256 _vault
-        ) = abi.decode(
-                initParams,
-                (
-                    address,
-                    address,
-                    address,
-                    address,
-                    address,
-                    address,
-                    address,
-                    uint256,
-                    uint256,
-                    uint256
-                )
-            );
+    ) internal initializer {
         __Ownable_init();
 
         asset = _asset;
