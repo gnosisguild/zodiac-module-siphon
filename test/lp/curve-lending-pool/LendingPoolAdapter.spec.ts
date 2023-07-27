@@ -23,7 +23,7 @@ const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 const CURVE_LP_TOKEN = "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2";
 const CONVEX_REWARDS_POOL = "0xf34DFF761145FF0B05e917811d488B441F33a968";
 
-describe.only("LendingPoolAdapter", async () => {
+describe("LendingPoolAdapter", async () => {
   before(async () => {
     await fork(17741542);
   });

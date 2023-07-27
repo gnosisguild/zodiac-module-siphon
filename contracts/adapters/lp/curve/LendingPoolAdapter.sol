@@ -18,7 +18,6 @@ interface ICurveDeposit {
 }
 
 interface ICurvePool {
-
     function balances(int128 i) external view returns (uint256);
 
     function fee() external view returns (uint256);
