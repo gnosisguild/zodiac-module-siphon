@@ -8,6 +8,7 @@ import { SafeMock__factory } from "../typechain-types";
 
 import { fork, forkReset } from "./lp/setup";
 import { execPopulatedTransaction, highjack } from "./safe";
+import { parseUnits } from "ethers/lib/utils";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 
@@ -27,7 +28,10 @@ describe("Siphon", async () => {
     const LiquidityAdapter = await hre.ethers.getContractFactory(
       "ConvexCompoundAdapter"
     );
-    const liquidityAdapter = await LiquidityAdapter.deploy(GNO_SAFE);
+    const liquidityAdapter = await LiquidityAdapter.deploy(
+      GNO_SAFE,
+      parseUnits("0.99", 18)
+    );
 
     const DebtAdapter = await hre.ethers.getContractFactory(
       "MakerVaultAdapter"
@@ -81,20 +85,6 @@ describe("Siphon", async () => {
     expect(balanceBefore.gt(balanceAfter)).to.be.true;
   });
 });
-
-// async function getCTokens() {
-//   const CDAI = "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643";
-//   const CUSDC = "0x39AA39c021dfbaE8faC545936693aC917d5E7563";
-
-//   const [signer] = await hre.ethers.getSigners();
-//   const cusdc = CToken__factory.connect(CUSDC, signer);
-//   const cdai = CToken__factory.connect(CDAI, signer);
-
-//   const usdc = ERC20__factory.connect(await cusdc.underlying(), signer);
-//   const dai = ERC20__factory.connect(await cdai.underlying(), signer);
-
-//   return { cusdc, cdai, usdc, dai };
-// }
 
 async function enableModule(
   safeAddress: string,

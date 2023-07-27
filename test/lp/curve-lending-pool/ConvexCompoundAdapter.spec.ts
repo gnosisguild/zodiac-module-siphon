@@ -5,7 +5,6 @@ import hre from "hardhat";
 
 import { fork, forkReset } from "../setup";
 import {
-  CToken__factory,
   ConvexCompoundAdapter,
   ERC20__factory,
   MockRewardPool__factory,
@@ -17,13 +16,14 @@ import {
 } from "../../safe";
 import { expect } from "chai";
 import { TransactionStructOutput } from "../../../typechain-types/contracts/IDebtPosition";
-import { formatUnits, parseUnits } from "ethers/lib/utils";
+import { parseUnits } from "ethers/lib/utils";
+import { getCTokens } from "../constants";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 const CURVE_LP_TOKEN = "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2";
 const CONVEX_REWARDS_POOL = "0xf34DFF761145FF0B05e917811d488B441F33a968";
 
-describe.only("LendingPoolAdapter", async () => {
+describe("ConvexCompoundAdapter", async () => {
   before(async () => {
     await fork(17741542);
   });
@@ -34,14 +34,14 @@ describe.only("LendingPoolAdapter", async () => {
 
   async function setup() {
     const [signer] = await hre.ethers.getSigners();
-    const { dai, usdc } = await getCTokens();
+    const { dai, usdc } = await getCTokens(signer);
 
     await highjack(GNO_SAFE, signer.address);
 
     const Adapter = await hre.ethers.getContractFactory(
       "ConvexCompoundAdapter"
     );
-    const adapter = await Adapter.deploy(GNO_SAFE);
+    const adapter = await Adapter.deploy(GNO_SAFE, parseUnits("0.90", 18));
 
     await executeFlushERC20(GNO_SAFE, dai.address);
     await executeFlushERC20(GNO_SAFE, usdc.address);
@@ -58,7 +58,7 @@ describe.only("LendingPoolAdapter", async () => {
   it("withdraws from unstaked only", async () => {
     const [signer] = await hre.ethers.getSigners();
     const { adapter, rewards, lpToken } = await loadFixture(setup);
-    const { dai } = await getCTokens();
+    const { dai } = await getCTokens(signer);
 
     await executeLeaveStake(GNO_SAFE);
 
@@ -100,7 +100,7 @@ describe.only("LendingPoolAdapter", async () => {
   it("withdraws from staked only", async () => {
     const [signer] = await hre.ethers.getSigners();
     const { adapter, rewards, lpToken } = await loadFixture(setup);
-    const { dai } = await getCTokens();
+    const { dai } = await getCTokens(signer);
 
     // flush 80% of the pool position such that we are not a whale
     await executeLeaveStake(
@@ -143,7 +143,7 @@ describe.only("LendingPoolAdapter", async () => {
   it("withdraws from staked and unstaked", async () => {
     const [signer] = await hre.ethers.getSigners();
     const { adapter, rewards, lpToken } = await loadFixture(setup);
-    const { dai } = await getCTokens();
+    const { dai } = await getCTokens(signer);
 
     await executeFlushERC20(GNO_SAFE, lpToken.address);
 
@@ -190,7 +190,7 @@ describe.only("LendingPoolAdapter", async () => {
   it("does not withdraw more than effective LptBalance", async () => {
     const [signer] = await hre.ethers.getSigners();
     const { adapter, rewards, lpToken } = await loadFixture(setup);
-    const { dai } = await getCTokens();
+    const { dai } = await getCTokens(signer);
 
     await executeFlushERC20(GNO_SAFE, lpToken.address);
 
@@ -225,7 +225,7 @@ describe.only("LendingPoolAdapter", async () => {
   it("Whale: small withdraw is close enough to requested", async () => {
     const [signer] = await hre.ethers.getSigners();
     const { adapter, rewards, lpToken } = await loadFixture(setup);
-    const { dai } = await getCTokens();
+    const { dai } = await getCTokens(signer);
 
     // ensure its not capped (balance bellow maxAmountIn)
     expect(await isLptBalanceCapped(adapter)).to.be.true;
@@ -251,7 +251,7 @@ describe.only("LendingPoolAdapter", async () => {
   it("Fish: small withdraw is close enough to requested", async () => {
     const [signer] = await hre.ethers.getSigners();
     const { adapter, rewards, lpToken } = await loadFixture(setup);
-    const { dai } = await getCTokens();
+    const { dai } = await getCTokens(signer);
 
     // leave 99.9% of the staked rewards
     await executeLeaveStake(
@@ -328,20 +328,6 @@ async function executeLeaveStake(safeAddress: string, balance?: BigNumberish) {
   );
 
   await execPopulatedTransaction(safeAddress, tx, signer);
-}
-
-async function getCTokens() {
-  const CDAI = "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643";
-  const CUSDC = "0x39AA39c021dfbaE8faC545936693aC917d5E7563";
-
-  const [signer] = await hre.ethers.getSigners();
-  const cusdc = CToken__factory.connect(CUSDC, signer);
-  const cdai = CToken__factory.connect(CDAI, signer);
-
-  const usdc = ERC20__factory.connect(await cusdc.underlying(), signer);
-  const dai = ERC20__factory.connect(await cdai.underlying(), signer);
-
-  return { cusdc, cdai, usdc, dai };
 }
 
 async function isLptBalanceCapped(adapter: ConvexCompoundAdapter) {

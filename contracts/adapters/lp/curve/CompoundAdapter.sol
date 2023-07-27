@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity ^0.8.6;
 
-import "./LendingPoolAdapter.sol";
+import "./_LendingPoolAdapter.sol";
 
 interface ICompoundToken {
     function exchangeRateStored() external view returns (uint256);
 }
 
 contract ConvexCompoundAdapter is LendingPoolAdapter {
-    constructor(address investor) LendingPoolAdapter(investor, getConfig()) {}
-
-    function getConfig() private pure returns (Config memory) {
-        return
+    constructor(
+        address investor,
+        uint256 minAcceptablePrice
+    )
+        LendingPoolAdapter(
             Config({
                 lpToken: IERC20(0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2),
                 pool: ICurvePool(0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56),
@@ -35,7 +36,29 @@ contract ConvexCompoundAdapter is LendingPoolAdapter {
                 ),
                 indexOther: 1,
                 scaleFactorOther: 10 ** 12
-            });
+            })
+        )
+    {
+        bytes memory initParams = abi.encode(investor, minAcceptablePrice);
+        setUp(initParams);
+    }
+
+    function setUp(bytes memory initParams) public override initializer {
+        (address _investor, uint256 _minAcceptablePrice) = abi.decode(
+            initParams,
+            (address, uint256)
+        );
+
+        __Ownable_init();
+        investor = _investor;
+        minAcceptablePrice = _minAcceptablePrice;
+        _transferOwnership(investor);
+    }
+
+    function setMinAcceptablePrice(
+        uint256 nextMinAcceptablePrice
+    ) external onlyOwner {
+        minAcceptablePrice = nextMinAcceptablePrice;
     }
 
     // underlyingToLending

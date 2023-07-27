@@ -57,7 +57,7 @@ contract Siphon is Module, MultisendEncoder {
         avatar = _avatar;
         target = _target;
 
-        transferOwnership(avatar);
+        _transferOwnership(avatar);
     }
 
     function connectTube(

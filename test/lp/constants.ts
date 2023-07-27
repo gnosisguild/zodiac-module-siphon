@@ -1,9 +1,13 @@
 import { getAddress } from "ethers/lib/utils";
+import { CToken__factory, ERC20__factory } from "../../typechain-types";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 
 export const USDC_ADDRESS = getAddress(
   "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
 );
 export const USDC_WHALE = "0x55fe002aeff02f77364de339a1292923a15844b8";
+export const COMPOUND_USDC_ADDRESS =
+  "0x39AA39c021dfbaE8faC545936693aC917d5E7563";
 
 export const DAI_ADDRESS = getAddress(
   "0x6B175474E89094C44Da98b954EedeAC495271d0F"
@@ -12,6 +16,8 @@ export const DAI_WHALE = "0x075e72a5edf65f0a5f44699c7654c1a76941ddc8";
 export const DAI_LINEAR_POOL = getAddress(
   "0x804cdb9116a10bb78768d3252355a1b18067bf8f"
 );
+export const COMPOUND_DAI_ADDRESS =
+  "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643";
 
 export const TETHER_ADDRESS = getAddress(
   "0xdAC17F958D2ee523a2206206994597C13D831ec7"
@@ -48,6 +54,16 @@ export const HELPERS_ADDRESS = "0x5aDDCCa35b7A0D07C74063c48700C8590E87864E";
 
 export const MAX_UINT256 =
   "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+
+export async function getCTokens(signer: SignerWithAddress) {
+  const cdai = CToken__factory.connect(COMPOUND_DAI_ADDRESS, signer);
+  const cusdc = CToken__factory.connect(COMPOUND_USDC_ADDRESS, signer);
+
+  const dai = ERC20__factory.connect(DAI_ADDRESS, signer);
+  const usdc = ERC20__factory.connect(USDC_ADDRESS, signer);
+
+  return { cdai, cusdc, dai, usdc };
+}
 
 export const vaultAbi = [
   "constructor(address authorizer, address weth, uint256 pauseWindowDuration, uint256 bufferPeriodDuration)",
