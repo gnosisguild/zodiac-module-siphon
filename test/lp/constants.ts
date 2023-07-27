@@ -55,7 +55,7 @@ export const HELPERS_ADDRESS = "0x5aDDCCa35b7A0D07C74063c48700C8590E87864E";
 export const MAX_UINT256 =
   "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
-export async function getCTokens(signer: SignerWithAddress) {
+export function getCTokens(signer: SignerWithAddress) {
   const cdai = CToken__factory.connect(COMPOUND_DAI_ADDRESS, signer);
   const cusdc = CToken__factory.connect(COMPOUND_USDC_ADDRESS, signer);
 

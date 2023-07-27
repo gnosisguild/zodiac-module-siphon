@@ -1,27 +1,19 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { BigNumberish } from "ethers";
+import { BigNumber } from "ethers";
 import hre from "hardhat";
 
 import { fork, forkReset } from "../setup";
 import {
-  CToken__factory,
-  ConvexCompoundAdapter,
+  CToken,
+  CurvePool__factory,
   ERC20__factory,
-  MockRewardPool__factory,
 } from "../../../typechain-types";
-import {
-  execPopulatedTransaction,
-  execTransaction,
-  highjack,
-} from "../../safe";
+import { formatUnits, parseUnits } from "ethers/lib/utils";
+import { getCTokens } from "../constants";
 import { expect } from "chai";
-import { TransactionStructOutput } from "../../../typechain-types/contracts/IDebtPosition";
-import { parseUnits } from "ethers/lib/utils";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
-const CURVE_LP_TOKEN = "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2";
-const CONVEX_REWARDS_POOL = "0xf34DFF761145FF0B05e917811d488B441F33a968";
+const CURVE_POOL = "0xA2B47E3D5c44877cca798226B7B8118F9BFb7A56";
 
 describe("ConvexCompoundPrice", async () => {
   before(async () => {
@@ -34,78 +26,170 @@ describe("ConvexCompoundPrice", async () => {
 
   async function setup() {
     const [signer] = await hre.ethers.getSigners();
-    const { dai, usdc } = await getCTokens();
+    const { dai, usdc } = await getCTokens(signer);
 
-    await highjack(GNO_SAFE, signer.address);
+    const usdcWhale = "0x51eDF02152EBfb338e03E30d65C15fBf06cc9ECC";
+    const daiWhale = "0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8";
+
+    await moveERC20(daiWhale, signer.address, dai.address);
+    await moveERC20(usdcWhale, signer.address, usdc.address);
 
     const Adapter = await hre.ethers.getContractFactory(
       "ConvexCompoundAdapter"
     );
-    const adapter = await Adapter.deploy(GNO_SAFE, parseUnits("0.90", 18));
+    const adapter = await Adapter.deploy(GNO_SAFE, parseUnits("1", 18));
 
-    await executeFlushERC20(GNO_SAFE, dai.address);
-    await executeFlushERC20(GNO_SAFE, usdc.address);
-
-    const rewards = MockRewardPool__factory.connect(
-      CONVEX_REWARDS_POOL,
-      hre.ethers.provider
-    );
-    const lpToken = ERC20__factory.connect(CURVE_LP_TOKEN, hre.ethers.provider);
-
-    return { adapter, rewards, lpToken };
+    return { adapter };
   }
 
-  it("50/50 pool reads correct price");
+  it("50/50 pool reads correct price", async () => {
+    const [signer] = await hre.ethers.getSigners();
+    const { adapter } = await loadFixture(setup);
 
-  it("25/75 pool reads correct price");
-  it("75/25 pool reads correct price");
+    await injectDAI(parseUnits("1145000", 18));
 
-  it("10/90 pool reads correct price");
-  it("90/10 pool reads correct price");
+    const [percOut, percOther] = await getPoolPercs();
 
-  it("1/99 pool reads correct price");
-  it("99/1 pool reads correct price");
+    expect(percOut).to.equal(50);
+    expect(percOther).to.equal(50);
+
+    const price = await adapter.price();
+    expect(price).to.equal(parseUnits("0.999600035", 18));
+  });
+
+  it("25/75 pool reads correct price", async () => {
+    const { adapter } = await loadFixture(setup);
+
+    await injectUSDC(parseUnits("420000", 6));
+
+    const [percOut, percOther] = await getPoolPercs();
+
+    expect(percOut).to.equal(25);
+    expect(percOther).to.equal(75);
+
+    const price = await adapter.price();
+    expect(price).to.equal(parseUnits("0.999978378", 18));
+  });
+
+  it("72/25 pool reads correct price");
+
+  it("5/95 pool reads correct price", async () => {
+    const { adapter } = await loadFixture(setup);
+
+    await injectUSDC(parseUnits("1700000", 6));
+
+    const [percOut, percOther] = await getPoolPercs();
+    expect(percOut).to.equal(5);
+    expect(percOther).to.equal(95);
+
+    const price = await adapter.price();
+    expect(price).to.equal(parseUnits("1.008983752", 18));
+  });
+
+  it("95/5 pool reads correct price", async () => {
+    const { adapter } = await loadFixture(setup);
+
+    await injectDAI(parseUnits("4020000", 18));
+
+    const [percOut, percOther] = await getPoolPercs();
+    expect(percOut).to.equal(95);
+    expect(percOther).to.equal(5);
+
+    const price = await adapter.price();
+    expect(price).to.equal(parseUnits("0.988548354", 18));
+  });
+
+  it("1/99 pool reads correct price", async () => {
+    const { adapter } = await loadFixture(setup);
+
+    await injectUSDC(parseUnits("2000000", 6));
+
+    const [percOut, percOther] = await getPoolPercs();
+    expect(percOut).to.equal(1);
+    expect(percOther).to.equal(99);
+
+    const price = await adapter.price();
+    expect(price).to.equal(parseUnits("1.296422852", 18));
+  });
+  it("99/1 pool reads correct price", async () => {
+    const { adapter } = await loadFixture(setup);
+
+    await injectDAI(parseUnits("4280000", 18));
+
+    const [percOut, percOther] = await getPoolPercs();
+    expect(percOut).to.equal(99);
+    expect(percOther).to.equal(1);
+
+    const price = await adapter.price();
+    expect(price).to.equal(parseUnits("0.813246027", 18));
+  });
 });
 
-async function executeInstructions(
-  safeAddress: string,
-  instructions: TransactionStructOutput[],
-  signer: SignerWithAddress
-) {
-  for (let i = 0; i < instructions.length; i++) {
-    const receipt = await execTransaction(safeAddress, instructions[i], signer);
-    await receipt.wait();
-  }
+async function moveERC20(from: string, to: string, tokenAddress: string) {
+  const impersonator = await hre.ethers.getImpersonatedSigner(from);
+
+  const token = ERC20__factory.connect(tokenAddress, impersonator);
+
+  const receipt = await token.transfer(to, await token.balanceOf(from));
+
+  await receipt.wait();
 }
 
-async function executeFlushERC20(
-  safeAddress: string,
-  token: string,
-  balance?: BigNumberish
-) {
+const SCALE = parseUnits("1", 18);
+
+async function injectDAI(amount: BigNumber) {
   const [signer] = await hre.ethers.getSigners();
-  const erc20 = ERC20__factory.connect(token, hre.ethers.provider);
+  const { dai } = await getCTokens(signer);
 
-  const tx = await erc20.populateTransaction.transfer(
-    "0x0000000000000000000000000000000000000002",
-    balance ? balance : await erc20.balanceOf(safeAddress)
-  );
+  const pool = CurvePool__factory.connect(CURVE_POOL, signer);
 
-  await execPopulatedTransaction(safeAddress, tx, signer);
+  await (await dai.approve(pool.address, amount)).wait();
+  await (await pool.exchange_underlying(0, 1, amount, 0)).wait();
 }
 
-async function executeLeaveStake(safeAddress: string, balance?: BigNumberish) {
+async function injectUSDC(amount: BigNumber) {
+  const [signer] = await hre.ethers.getSigners();
+  const { usdc } = await getCTokens(signer);
+
+  const pool = CurvePool__factory.connect(CURVE_POOL, signer);
+
+  await (await usdc.approve(pool.address, amount)).wait();
+  await (await pool.exchange_underlying(1, 0, amount, 0)).wait();
+}
+
+async function calcCTokenToUnderlying(cToken: CToken, amount: BigNumber) {
+  return amount.mul(await cToken.exchangeRateStored()).div(SCALE);
+}
+
+async function getPoolPercs() {
+  const { percOut, percOther } = await getPoolShape();
+
+  return [Math.round(percOut * 100), Math.round(percOther * 100)];
+}
+
+async function getPoolShape() {
   const [signer] = await hre.ethers.getSigners();
 
-  const rewards = MockRewardPool__factory.connect(
-    CONVEX_REWARDS_POOL,
-    hre.ethers.provider
+  const pool = CurvePool__factory.connect(CURVE_POOL, hre.ethers.provider);
+
+  const { cdai, cusdc } = getCTokens(signer);
+
+  const reservesOut = await calcCTokenToUnderlying(
+    cdai,
+    await pool.balances(0)
+  );
+  const reservesOther = await calcCTokenToUnderlying(
+    cusdc,
+    await pool.balances(1)
   );
 
-  const tx = await rewards.populateTransaction.withdrawAndUnwrap(
-    balance ? balance : await rewards.balanceOf(safeAddress),
-    false
-  );
+  const a = Number(formatUnits(reservesOut, 18));
+  const b = Number(formatUnits(reservesOther.mul(10 ** 12), 18));
 
-  await execPopulatedTransaction(safeAddress, tx, signer);
+  return {
+    reservesOut,
+    reservesOther,
+    percOut: a / (a + b),
+    percOther: b / (a + b),
+  };
 }
