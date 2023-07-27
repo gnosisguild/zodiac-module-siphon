@@ -1,8 +1,18 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity ^0.8.6;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 import "../../../ILiquidityPosition.sol";
+
+interface IERC20 {
+    function approve(address spender, uint256 amount) external returns (bool);
+
+    function balanceOf(address account) external view returns (uint256);
+
+    function decimals() external view returns (uint8);
+
+    function totalSupply() external view returns (uint256);
+}
 
 interface ICurveDeposit {
     function calc_withdraw_one_coin(
@@ -28,6 +38,12 @@ interface ICurvePool {
         uint256 dx
     ) external view returns (uint256);
 
+    function get_dy_underlying(
+        int128 i,
+        int128 j,
+        uint256 dx
+    ) external view returns (uint256);
+
     function exchange(int128 i, int128 j, uint256 dx, uint256 minDy) external;
 
     function remove_liquidity(uint256 amount, uint256[2] memory) external;
@@ -42,10 +58,8 @@ interface IConvexRewards {
     function balanceOf(address) external view returns (uint256);
 }
 
-abstract contract LendingPoolAdapter is ILiquidityPosition {
-    uint256 public constant scale = 10 ** 18;
-
-    address public immutable investor;
+abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
+    uint256 public constant SCALE = 10 ** 18;
 
     IERC20 public immutable lpToken;
     ICurvePool public immutable pool;
@@ -64,9 +78,23 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
     int128 public immutable indexOther;
     uint256 public immutable scaleFactorOther;
 
-    constructor(address _investor, Config memory config) {
-        investor = _investor;
+    /**
+     * @dev the owner of the LendingPool position
+     */
+    address public investor;
 
+    /**
+     * @dev the minimum acceptable price of tokenOut in tokenOther
+     *
+     * NOTE: as 18 decimal fixed point
+     */
+    uint256 public minAcceptablePrice;
+
+    constructor(Config memory config) {
+        /*
+         * Only initialize common immutable variables here. These will be the
+         * same even across different proxy deployments of the concrete adapter
+         */
         lpToken = config.lpToken;
         pool = config.pool;
         deposit = config.deposit;
@@ -95,9 +123,8 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
         return true;
     }
 
-    function assessPostWithdraw() public pure override returns (bool) {
-        // TODO
-        return true;
+    function assessPostWithdraw() public view override returns (bool) {
+        return price() > minAcceptablePrice;
     }
 
     function withdrawalInstructions(
@@ -125,6 +152,16 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
             result[1] = _encodeApprove(amountIn);
             result[2] = _encodeExit(amountIn);
         }
+    }
+
+    /// @notice gets out price in terms of other
+    /// @return the price as fixed point with 18 decimal places
+    function price() public view returns (uint256) {
+        // A thousand units
+        uint256 dx = 1000 * 10 ** 18;
+        uint256 dy = pool.get_dy_underlying(indexOut, indexOther, dx);
+
+        return _div(dy * scaleFactorOther, dx);
     }
 
     function lptBalances()
@@ -252,11 +289,11 @@ abstract contract LendingPoolAdapter is ILiquidityPosition {
     ) public view virtual returns (uint256);
 
     function _div(uint256 x, uint256 y) internal pure returns (uint256) {
-        return (x * scale) / y;
+        return (x * SCALE) / y;
     }
 
     function _mul(uint256 x, uint256 y) internal pure returns (uint256) {
-        return (x * y) / scale;
+        return (x * y) / SCALE;
     }
 
     struct Config {
