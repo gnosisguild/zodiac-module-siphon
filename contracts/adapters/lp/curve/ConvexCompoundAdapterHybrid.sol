@@ -64,25 +64,25 @@ interface ICompoundToken {
     function exchangeRateStored() external view returns (uint256);
 }
 
-contract ConvexCompoundAdapter is FactoryFriendly, ILiquidityPosition {
+contract ConvexCompoundAdapterHybrid is FactoryFriendly, ILiquidityPosition {
     uint256 public constant SCALE = 10 ** 18;
 
-    IERC20 public lpToken;
-    ICurvePool public pool;
-    ICurveDeposit public deposit;
-    IConvexRewards public rewards;
+    IERC20 public immutable lpToken;
+    ICurvePool public immutable pool;
+    ICurveDeposit public immutable deposit;
+    IConvexRewards public immutable rewards;
 
     // Out
-    int128 public indexOut;
-    IERC20 public underlyingTokenOut;
-    address public cTokenOut;
-    uint256 public scaleFactorOut;
+    int128 public immutable indexOut;
+    IERC20 public immutable underlyingTokenOut;
+    address public immutable cTokenOut;
+    uint256 public immutable scaleFactorOut;
 
     // Other
-    int128 public indexOther;
-    IERC20 public underlyingTokenOther;
-    address public cTokenOther;
-    uint256 public scaleFactorOther;
+    int128 public immutable indexOther;
+    IERC20 public immutable underlyingTokenOther;
+    address public immutable cTokenOther;
+    uint256 public immutable scaleFactorOther;
 
     /**
      * @dev the owner of the LendingPool position
@@ -104,31 +104,12 @@ contract ConvexCompoundAdapter is FactoryFriendly, ILiquidityPosition {
         address _investor,
         uint256 _minAcceptablePrice
     ) {
-        bytes memory initParams = abi.encode(
-            _deposit,
-            _rewards,
-            _indexOut,
-            _indexOther,
-            _investor,
-            _minAcceptablePrice
+        IERC20 _underlyingTokenOut = IERC20(
+            ICurveDeposit(_deposit).underlying_coins(_indexOut)
         );
-        setUp(initParams);
-    }
-
-    function setUp(bytes memory initParams) public override initializer {
-        (
-            address _deposit,
-            address _rewards,
-            int128 _indexOut,
-            int128 _indexOther,
-            address _investor,
-            uint256 _minAcceptablePrice
-        ) = abi.decode(
-                initParams,
-                (address, address, int128, int128, address, uint256)
-            );
-
-        __Ownable_init();
+        IERC20 _underlyingTokenOther = IERC20(
+            ICurveDeposit(_deposit).underlying_coins(_indexOther)
+        );
 
         lpToken = IERC20(ICurveDeposit(_deposit).token());
         pool = ICurvePool(ICurveDeposit(_deposit).curve());
@@ -136,14 +117,32 @@ contract ConvexCompoundAdapter is FactoryFriendly, ILiquidityPosition {
         rewards = IConvexRewards(_rewards);
 
         indexOut = _indexOut;
-        cTokenOut = deposit.coins(_indexOut);
-        underlyingTokenOut = IERC20(deposit.underlying_coins(_indexOut));
-        scaleFactorOut = 10 ** (18 - underlyingTokenOut.decimals());
+        cTokenOut = ICurveDeposit(_deposit).coins(_indexOut);
+        underlyingTokenOut = _underlyingTokenOut;
+        scaleFactorOut = 10 ** (18 - _underlyingTokenOut.decimals());
 
         indexOther = _indexOther;
-        cTokenOther = deposit.coins(_indexOther);
-        underlyingTokenOther = IERC20(deposit.underlying_coins(_indexOther));
-        scaleFactorOther = 10 ** (18 - underlyingTokenOther.decimals());
+        cTokenOther = ICurveDeposit(_deposit).coins(_indexOther);
+        underlyingTokenOther = _underlyingTokenOther;
+        scaleFactorOther = 10 ** (18 - _underlyingTokenOther.decimals());
+
+        setUp(
+            abi.encode(
+                _deposit,
+                _rewards,
+                _indexOut,
+                _indexOther,
+                _investor,
+                _minAcceptablePrice
+            )
+        );
+    }
+
+    function setUp(bytes memory initParams) public override initializer {
+        (, , , , address _investor, uint256 _minAcceptablePrice) = abi.decode(
+            initParams,
+            (address, address, int128, int128, address, uint256)
+        );
 
         investor = _investor;
         minAcceptablePrice = _minAcceptablePrice;
