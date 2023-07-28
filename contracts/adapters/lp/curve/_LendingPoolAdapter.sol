@@ -15,6 +15,14 @@ interface IERC20 {
 }
 
 interface ICurveDeposit {
+    function curve() external view returns (address);
+
+    function token() external view returns (address);
+
+    function coins(int128 i) external view returns (address);
+
+    function underlying_coins(int128 i) external view returns (address);
+
     function calc_withdraw_one_coin(
         uint256 amount,
         int128 index
@@ -31,8 +39,6 @@ interface ICurvePool {
 
     function balances(int128 i) external view returns (uint256);
 
-    function fee() external view returns (uint256);
-
     function get_dy(
         int128 i,
         int128 j,
@@ -44,10 +50,6 @@ interface ICurvePool {
         int128 j,
         uint256 dx
     ) external view returns (uint256);
-
-    function exchange(int128 i, int128 j, uint256 dx, uint256 minDy) external;
-
-    function remove_liquidity(uint256 amount, uint256[2] memory) external;
 }
 
 interface IConvexRewards {
@@ -62,22 +64,22 @@ interface IConvexRewards {
 abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
     uint256 public constant SCALE = 10 ** 18;
 
-    IERC20 public immutable lpToken;
-    ICurvePool public immutable pool;
-    ICurveDeposit public immutable deposit;
-    IConvexRewards public immutable rewards;
+    IERC20 public lpToken;
+    ICurvePool public pool;
+    ICurveDeposit public deposit;
+    IConvexRewards public rewards;
 
     // Out
-    IERC20 public immutable underlyingTokenOut;
-    address public immutable lendingTokenOut;
-    int128 public immutable indexOut;
-    uint256 public immutable scaleFactorOut;
+    IERC20 public underlyingTokenOut;
+    address public lendingTokenOut;
+    int128 public indexOut;
+    uint256 public scaleFactorOut;
 
     // Other
-    IERC20 public immutable underlyingTokenOther;
-    address public immutable lendingTokenOther;
-    int128 public immutable indexOther;
-    uint256 public immutable scaleFactorOther;
+    IERC20 public underlyingTokenOther;
+    address public lendingTokenOther;
+    int128 public indexOther;
+    uint256 public scaleFactorOther;
 
     /**
      * @dev the owner of the LendingPool position
@@ -91,25 +93,58 @@ abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
      */
     uint256 public minAcceptablePrice;
 
-    constructor(Config memory config) {
-        /*
-         * Only initialize common immutable variables here. These will be the
-         * same even across different proxy deployments of the concrete adapter
-         */
-        lpToken = config.lpToken;
-        pool = config.pool;
-        deposit = config.deposit;
-        rewards = config.rewards;
+    constructor(
+        address _deposit,
+        address _rewards,
+        uint256 _indexOut,
+        uint256 _indexOther,
+        address _investor,
+        uint256 _minAcceptablePrice
+    ) {
+        bytes memory initParams = abi.encode(
+            _deposit,
+            _rewards,
+            _indexOut,
+            _indexOther,
+            _investor,
+            _minAcceptablePrice
+        );
+        setUp(initParams);
+    }
 
-        lendingTokenOut = config.lendingTokenOut;
-        underlyingTokenOut = config.underlyingTokenOut;
-        indexOut = config.indexOut;
-        scaleFactorOut = config.scaleFactorOut;
+    function setUp(bytes memory initParams) public override initializer {
+        (
+            address _deposit,
+            address _rewards,
+            int128 _indexOut,
+            int128 _indexOther,
+            address _investor,
+            uint256 _minAcceptablePrice
+        ) = abi.decode(
+                initParams,
+                (address, address, int128, int128, address, uint256)
+            );
 
-        lendingTokenOther = config.lendingTokenOther;
-        underlyingTokenOther = config.underlyingTokenOther;
-        indexOther = config.indexOther;
-        scaleFactorOther = config.scaleFactorOther;
+        __Ownable_init();
+
+        lpToken = IERC20(ICurveDeposit(_deposit).token());
+        pool = ICurvePool(ICurveDeposit(_deposit).curve());
+        deposit = ICurveDeposit(_deposit);
+        rewards = IConvexRewards(_rewards);
+
+        indexOut = _indexOut;
+        lendingTokenOut = deposit.coins(_indexOut);
+        underlyingTokenOut = IERC20(deposit.underlying_coins(_indexOut));
+        scaleFactorOut = 10 ** (18 - underlyingTokenOut.decimals());
+
+        indexOther = _indexOther;
+        lendingTokenOther = deposit.coins(_indexOther);
+        underlyingTokenOther = IERC20(deposit.underlying_coins(_indexOther));
+        scaleFactorOther = 10 ** (18 - underlyingTokenOther.decimals());
+
+        investor = _investor;
+        minAcceptablePrice = _minAcceptablePrice;
+        _transferOwnership(investor);
     }
 
     function asset() public view override returns (address) {
@@ -181,6 +216,12 @@ abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
         uint256 cap = _calcMaxAmountIn();
 
         return total > cap ? cap : total;
+    }
+
+    function setMinAcceptablePrice(
+        uint256 nextMinAcceptablePrice
+    ) external onlyOwner {
+        minAcceptablePrice = nextMinAcceptablePrice;
     }
 
     function _encodeUnstake(

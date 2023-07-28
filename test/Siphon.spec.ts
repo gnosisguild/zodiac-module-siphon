@@ -29,6 +29,10 @@ describe("Siphon", async () => {
       "ConvexCompoundAdapter"
     );
     const liquidityAdapter = await LiquidityAdapter.deploy(
+      "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
+      "0xf34DFF761145FF0B05e917811d488B441F33a968",
+      0,
+      1,
       GNO_SAFE,
       parseUnits("0.99", 18)
     );
