@@ -36,7 +36,6 @@ interface ICurveDeposit {
 }
 
 interface ICurvePool {
-
     function balances(int128 i) external view returns (uint256);
 
     function get_dy(
@@ -61,7 +60,11 @@ interface IConvexRewards {
     function balanceOf(address) external view returns (uint256);
 }
 
-abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
+interface ICompoundToken {
+    function exchangeRateStored() external view returns (uint256);
+}
+
+contract ConvexCompoundAdapter is FactoryFriendly, ILiquidityPosition {
     uint256 public constant SCALE = 10 ** 18;
 
     IERC20 public lpToken;
@@ -70,15 +73,15 @@ abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
     IConvexRewards public rewards;
 
     // Out
-    IERC20 public underlyingTokenOut;
-    address public lendingTokenOut;
     int128 public indexOut;
+    IERC20 public underlyingTokenOut;
+    address public cTokenOut;
     uint256 public scaleFactorOut;
 
     // Other
-    IERC20 public underlyingTokenOther;
-    address public lendingTokenOther;
     int128 public indexOther;
+    IERC20 public underlyingTokenOther;
+    address public cTokenOther;
     uint256 public scaleFactorOther;
 
     /**
@@ -133,12 +136,12 @@ abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
         rewards = IConvexRewards(_rewards);
 
         indexOut = _indexOut;
-        lendingTokenOut = deposit.coins(_indexOut);
+        cTokenOut = deposit.coins(_indexOut);
         underlyingTokenOut = IERC20(deposit.underlying_coins(_indexOut));
         scaleFactorOut = 10 ** (18 - underlyingTokenOut.decimals());
 
         indexOther = _indexOther;
-        lendingTokenOther = deposit.coins(_indexOther);
+        cTokenOther = deposit.coins(_indexOther);
         underlyingTokenOther = IERC20(deposit.underlying_coins(_indexOther));
         scaleFactorOther = 10 ** (18 - underlyingTokenOther.decimals());
 
@@ -299,13 +302,13 @@ abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
      * Whale has 30% of the pool LPToken
      */
     function _calcMaxAmountIn() public view returns (uint256) {
-        uint256 reservesUnderlyingOut = _calcLendingToUnderlying(
-            lendingTokenOut,
+        uint256 reservesUnderlyingOut = _calcCTokenToUnderlying(
+            cTokenOut,
             pool.balances(indexOut)
         ) * scaleFactorOut;
 
-        uint256 reservesUnderlyingOther = _calcLendingToUnderlying(
-            lendingTokenOther,
+        uint256 reservesUnderlyingOther = _calcCTokenToUnderlying(
+            cTokenOther,
             pool.balances(indexOther)
         ) * scaleFactorOther;
 
@@ -320,15 +323,19 @@ abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
         return _mul(liquidRatio, lpToken.totalSupply());
     }
 
-    function _calcUnderlyingToLending(
-        address lendingToken,
+    function _calcUnderlyingToCToken(
+        address cToken,
         uint256 amount
-    ) public view virtual returns (uint256);
+    ) private view returns (uint256) {
+        return _div(amount, ICompoundToken(cToken).exchangeRateStored());
+    }
 
-    function _calcLendingToUnderlying(
-        address lendingToken,
+    function _calcCTokenToUnderlying(
+        address cToken,
         uint256 amount
-    ) public view virtual returns (uint256);
+    ) private view returns (uint256) {
+        return _mul(amount, ICompoundToken(cToken).exchangeRateStored());
+    }
 
     function _div(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x * SCALE) / y;
@@ -336,20 +343,5 @@ abstract contract LendingPoolAdapter is FactoryFriendly, ILiquidityPosition {
 
     function _mul(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x * y) / SCALE;
-    }
-
-    struct Config {
-        IERC20 lpToken;
-        ICurvePool pool;
-        ICurveDeposit deposit;
-        IConvexRewards rewards;
-        IERC20 underlyingTokenOut;
-        address lendingTokenOut;
-        int128 indexOut;
-        uint256 scaleFactorOut;
-        IERC20 underlyingTokenOther;
-        address lendingTokenOther;
-        int128 indexOther;
-        uint256 scaleFactorOther;
     }
 }
