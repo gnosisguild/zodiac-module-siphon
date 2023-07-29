@@ -88,6 +88,16 @@ describe("Siphon", async () => {
     expect(ratioBefore.lt(ratioAfter)).to.be.true;
     expect(balanceBefore.gt(balanceAfter)).to.be.true;
   });
+
+  it("does nothing when debt position does not need rebalancing");
+
+  it("does nothing when liquidity position does not have any funds");
+
+  it("blocks the withdrawal when price starts too low");
+
+  it(
+    "blocks the withdrawal when price starts ok, but withdrawal makes it too low"
+  );
 });
 
 async function enableModule(
