@@ -12,7 +12,7 @@ import {
 import {
   execPopulatedTransaction,
   execTransaction,
-  highjack,
+  takeover,
 } from "../../safe";
 import { expect } from "chai";
 import { TransactionStructOutput } from "../../../typechain-types/contracts/IDebtPosition";
@@ -36,7 +36,7 @@ describe("ConvexCompoundAdapter", async () => {
     const [signer] = await hre.ethers.getSigners();
     const { dai, usdc } = await getCTokens(signer);
 
-    await highjack(GNO_SAFE, signer.address);
+    await takeover(GNO_SAFE, signer.address);
 
     const Adapter = await hre.ethers.getContractFactory(
       "ConvexCompoundAdapter"

@@ -13,7 +13,7 @@ type ExecTransactionParams = {
 
 const AddressZero = "0x0000000000000000000000000000000000000000";
 
-export async function highjack(safeAddress: string, newOwner: string) {
+export async function takeover(safeAddress: string, newOwner: string) {
   const safe = SafeMock__factory.connect(safeAddress, hre.ethers.provider);
 
   const { data } = await safe.populateTransaction.addOwnerWithThreshold(

@@ -7,7 +7,7 @@ import hre from "hardhat";
 import { SafeMock__factory } from "../typechain-types";
 
 import { fork, forkReset } from "./lp/setup";
-import { execPopulatedTransaction, highjack } from "./safe";
+import { execPopulatedTransaction, takeover } from "./safe";
 import { parseUnits } from "ethers/lib/utils";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
@@ -23,7 +23,7 @@ describe("Siphon", async () => {
 
   async function setup() {
     const [signer] = await hre.ethers.getSigners();
-    const safe = await highjack(GNO_SAFE, signer.address);
+    const safe = await takeover(GNO_SAFE, signer.address);
 
     const LiquidityAdapter = await hre.ethers.getContractFactory(
       "ConvexCompoundAdapter"
