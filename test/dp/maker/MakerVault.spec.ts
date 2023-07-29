@@ -9,7 +9,7 @@ const ratioTrigger = 4211626045012448219058431512n;
 const expectedRatio = BigNumber.from(4169926777240047741642011399n);
 const expectedDelta = BigNumber.from(2479023057692998402742223n);
 
-describe("DP: Maker", async () => {
+describe("MakerVaultAdapter", async () => {
   async function baseSetup() {
     const urn = 123;
     const VAT = await hre.ethers.getContractFactory("MockVat");
