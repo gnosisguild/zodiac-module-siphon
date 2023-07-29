@@ -366,7 +366,7 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         return (x * y) / RAY;
     }
 
-    /// @dev multiplies two fixed point integers in ray scale
+    /// @dev divides two fixed point integers in ray scale
     function _div(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x * RAY) / y;
     }
