@@ -1,6 +1,7 @@
 import { BigNumber } from "ethers";
 import hre from "hardhat";
 import { fork, forkReset } from "../../setup";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 describe("MakerDaiVaultAdapter", async () => {
   before(async () => {
@@ -28,7 +29,9 @@ describe("MakerDaiVaultAdapter", async () => {
     return { adapter };
   }
 
-  it("does not need rebalancing when above ratioTrigger");
+  it("does not need rebalancing when above ratioTrigger", async () => {
+    const { adapter } = await loadFixture(setup);
+  });
 
   it("gets payment instructions to bring ratio back to ratioTarget");
 

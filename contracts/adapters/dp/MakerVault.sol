@@ -55,6 +55,10 @@ interface IVat {
         );
 }
 
+interface IAsset {
+    function decimals() external view returns (uint256);
+}
+
 contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
@@ -156,13 +160,13 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
      * @notice the target collateralization ratio
      * @dev the target collateralization ratio is the ratio of collateral to debt
      *  that we want to maintain. If the collateralization ratio is below the target
-     *  ratio, we will need to add more collateral to the Vault. Represented as ray.
+     *  ratio, we will need to add more collateral to the Vault. Represented as wad.
      */
     uint256 public ratioTarget;
 
     /**
      * @notice the trigger threshold for the collateralization ratio
-     * @dev represented as ray - 27 decimal places.
+     * @dev represented as wad - 18 decimal places.
      */
     uint256 public ratioTrigger;
 
@@ -235,7 +239,7 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     }
 
     /// @notice Returns the current collateralization ratio of the vault.
-    /// @return ratio as fixed point ray (27 decimals)
+    /// @return ratio as fixed point wad (18 decimals)
     function ratio() public view override returns (uint256) {
         // Collateralization Ratio = Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat / (Vat.urn.art * Vat.ilk.rate)
         // or
@@ -269,13 +273,17 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     /// bring vault to target ratio.
     /// @return amount fixed point scaled to asset decimals
     function delta() external view override returns (uint256) {
-        uint256 debt = debtValue();
-
         // r = (c * s * l) / d
         uint256 debtTarget = _div(collateralValue(), ratioTarget);
 
-        // scale down to wad - the decimal places of the asset
-        return _scaleDown(debt - debtTarget);
+        // delta is in wad -> 18 decimal places
+        uint256 _delta = debtValue() - debtTarget;
+
+        uint256 decimals = IAsset(asset).decimals();
+        assert(decimals <= 18);
+
+        // scale down to asset decimals
+        return _delta * 10 ** (18 - decimals);
     }
 
     /// @dev Returns whether the current debt positions needs rebelance.
@@ -327,7 +335,7 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
 
     /// @notice calculates collateral value in the vault, priced in base asset
     /// @dev formula is Vat.urn.ink * Vat.ilk.spot * Spot.ilk.mat
-    /// @return collateralValue as fixed point ray (27 decimals)
+    /// @return collateralValue represented as fixed point wad (18 decimals)
     function collateralValue() public view returns (uint256) {
         // get Ilk (collateral type)
         // rate -> stablecoin debt multiplier (accumulated stability fees)
@@ -342,12 +350,14 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         // mat -> the liquidation ratio
         (, uint256 mat) = ISpotter(spotter).ilks(ilk);
 
-        return _mul(_mul(_scaleUp(ink), spot), mat);
+        // multiply: wad . ray -> wad
+        // equivalent to: _scaleDown(_mul(_mul(_scaleUp(ink), spot), mat))
+        return _mul(_mul(ink, spot), mat);
     }
 
     /// @notice calculates total outstanding debt
     /// @dev formula is Vat.urn.art * Vat.ilk.rate
-    /// @return debtValue as ray (27 decimals)
+    /// @return debtValue represented as wad (18 decimals)
     function debtValue() public view returns (uint256) {
         // get Ilk (collateral type)
         // rate -> stablecoin debt multiplier (accumulated stability fees)
@@ -358,7 +368,9 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         // art -> outstanding stablecoin debt
         (, uint256 art) = IVat(vat).urns(ilk, urnHandler);
 
-        return _mul(_scaleUp(art), rate);
+        // multiply: wad . ray -> wad
+        // equivalent to: _scaleDown(_mul(_scaleUp(art), rate))
+        return _mul(art, rate);
     }
 
     /// @dev multiplies two fixed point integers in ray scale
@@ -369,15 +381,5 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     /// @dev divides two fixed point integers in ray scale
     function _div(uint256 x, uint256 y) internal pure returns (uint256) {
         return (x * RAY) / y;
-    }
-
-    /// @dev scales up a fixed point integer in wad scale to ray scale
-    function _scaleUp(uint256 _wad) internal pure returns (uint256) {
-        return _wad * (10 ** (27 - 18));
-    }
-
-    /// @dev scales down a fixed point integer in ray scale to wad scale
-    function _scaleDown(uint256 _ray) internal pure returns (uint256) {
-        return _ray / (10 ** (27 - 18));
     }
 }

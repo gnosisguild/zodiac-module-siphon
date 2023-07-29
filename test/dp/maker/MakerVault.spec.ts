@@ -6,7 +6,7 @@ import hre from "hardhat";
 const AddressOne = "0x0000000000000000000000000000000000000001";
 const ratioTarget = 4586919454964052515806212538n;
 const ratioTrigger = 4211626045012448219058431512n;
-const expectedRatio = BigNumber.from(4169926777240047741642011327n);
+const expectedRatio = BigNumber.from(4169926777240047741642011384n);
 const expectedDelta = BigNumber.from(2479023057692998402742223n);
 
 describe("MakerVaultAdapter", async () => {
