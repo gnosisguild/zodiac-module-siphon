@@ -50,7 +50,6 @@ describe("ConvexCompoundPrice", async () => {
   }
 
   it("50/50 pool reads correct price", async () => {
-    const [signer] = await hre.ethers.getSigners();
     const { adapter } = await loadFixture(setup);
 
     await injectDAI(parseUnits("1145000", 18));
