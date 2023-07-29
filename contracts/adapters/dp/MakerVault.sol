@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity ^0.8.6;
 
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../../IDebtPosition.sol";
-import "@gnosis.pm/zodiac/contracts/factory/FactoryFriendly.sol";
 
 uint256 constant WAD = 10 ** 18;
 uint256 constant RAY = 10 ** 27;
@@ -55,8 +55,7 @@ interface IVat {
         );
 }
 
-// temporary: marked abstract to silence compiler
-abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
+contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
     event AdapterSetup(
@@ -74,7 +73,7 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
     );
 
     /// @notice the asset we are borrowing
-    address public override asset;
+    address public immutable override asset;
 
     /**
      * @notice the CDP manager contract
@@ -84,14 +83,14 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
      *
      *  This is a global contract that manages all Vaults (must identify vault when using).
      */
-    address public cdpManager;
+    address public immutable cdpManager;
 
     /**
      * @notice the Dai Join contract
      * @dev allows users to withdraw their Dai from the system into a standard ERC20 token.
      *  This is a global contract (must identify vault when using).
      */
-    address public daiJoin;
+    address public immutable daiJoin;
 
     /**
      * @notice the DSProxy contract
@@ -105,7 +104,7 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
      *
      *  This is specific to the vault. The owner of this contract is the vault owner.
      */
-    address public dsProxy;
+    address public immutable dsProxy;
 
     /**
      * @notice the DSProxyActions contract
@@ -116,7 +115,7 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
      *  purpose is to be used via a personal ds-proxy and can be compared to the original
      *  Sag-Proxy as it offers the ability to execute a sequence of actions atomically.
      */
-    address public dsProxyActions;
+    address public immutable dsProxyActions;
 
     /**
      * @notice the Spotter contract
@@ -134,24 +133,24 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
      *
      *  This is a global contract (must identify collateral types (ilk) when using).
      */
-    address public spotter;
+    address public immutable spotter;
 
     /**
      * @notice the Urn Handler contract is the CDP??
      */
-    address public urnHandler;
+    address public immutable urnHandler;
 
     /**
      * @notice the core Vault engine
      * @dev The vat is the central contract in the Dai system.
      *  It is responsible for tracking the Dai supply, debt, and collateral.
      */
-    address public vat;
+    address public immutable vat;
 
     /**
      * @notice the collateral type
      */
-    bytes32 public ilk;
+    bytes32 public immutable ilk;
 
     /**
      * @notice the target collateralization ratio
@@ -170,9 +169,9 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
     /**
      * @notice the Vault ID
      */
-    uint256 public vault;
+    uint256 public immutable vault;
 
-    function _setUp(
+    constructor(
         address _asset,
         address _cdpManager,
         address _daiJoin,
@@ -183,8 +182,10 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
         uint256 _ratioTarget,
         uint256 _ratioTrigger,
         uint256 _vault
-    ) internal initializer {
-        __Ownable_init();
+    ) {
+        bytes32 _ilk = ICDPManager(_cdpManager).ilks(_vault);
+        address _urnHandler = ICDPManager(_cdpManager).urns(_vault);
+        address _vat = ICDPManager(_cdpManager).vat();
 
         asset = _asset;
         cdpManager = _cdpManager;
@@ -197,23 +198,23 @@ abstract contract MakerVaultAdapter is FactoryFriendly, IDebtPosition {
         ratioTrigger = _ratioTrigger;
         vault = _vault;
 
-        ilk = ICDPManager(cdpManager).ilks(vault);
-        urnHandler = ICDPManager(cdpManager).urns(vault);
-        vat = ICDPManager(cdpManager).vat();
-        transferOwnership(_owner);
+        ilk = _ilk;
+        urnHandler = _urnHandler;
+        vat = _vat;
+        _transferOwnership(_owner);
 
         emit AdapterSetup(
-            cdpManager,
-            daiJoin,
-            dsProxy,
-            dsProxyActions,
-            spotter,
-            urnHandler,
-            vat,
-            ilk,
-            ratioTarget,
-            ratioTrigger,
-            vault
+            _cdpManager,
+            _daiJoin,
+            _dsProxy,
+            _dsProxyActions,
+            _spotter,
+            _urnHandler,
+            _vat,
+            _ilk,
+            _ratioTarget,
+            _ratioTrigger,
+            _vault
         );
     }
 

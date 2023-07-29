@@ -10,30 +10,8 @@ contract MakerDaiVaultAdapter is MakerVaultAdapter {
         uint256 _ratioTarget,
         uint256 _ratioTrigger,
         uint256 _vault
-    ) {
-        bytes memory initParams = abi.encode(
-            _dsProxy,
-            _owner,
-            _ratioTarget,
-            _ratioTrigger,
-            _vault
-        );
-        setUp(initParams);
-    }
-
-    function setUp(bytes memory initParams) public override initializer {
-        (
-            address _dsProxy,
-            address _owner,
-            uint256 _ratioTarget,
-            uint256 _ratioTrigger,
-            uint256 _vault
-        ) = abi.decode(
-                initParams,
-                (address, address, uint256, uint256, uint256)
-            );
-
-        _setUp(
+    )
+        MakerVaultAdapter(
             0x6B175474E89094C44Da98b954EedeAC495271d0F, // asset -> DAI,
             0x5ef30b9986345249bc32d8928B7ee64DE9435E39, // cdpManager
             0x9759A6Ac90977b93B58547b4A71c78317f391A28, // daiJoin,
@@ -44,6 +22,6 @@ contract MakerDaiVaultAdapter is MakerVaultAdapter {
             _ratioTarget,
             _ratioTrigger,
             _vault
-        );
-    }
+        )
+    {}
 }
