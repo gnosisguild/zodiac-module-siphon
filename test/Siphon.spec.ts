@@ -47,8 +47,8 @@ describe("Siphon", async () => {
     const debtAdapter = await DebtAdapter.deploy(
       "0xD758500ddEc05172aaA035911387C8E0e789CF6a",
       "0x0DA0C3e52C977Ed3cBc641fF02DD271c3ED55aFe",
-      BigNumber.from("5861789575712043409055978289"),
-      BigNumber.from("5382188610426512584678670975"),
+      parseUnits("5.8617", 18),
+      parseUnits("5.3821", 18),
       27353
     );
 

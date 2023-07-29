@@ -4,8 +4,8 @@ pragma solidity ^0.8.6;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "../../IDebtPosition.sol";
 
-uint256 constant WAD = 10 ** 18;
 uint256 constant RAY = 10 ** 27;
+uint256 constant WAD = 10 ** 18;
 
 interface ICDPManager {
     function ilks(uint256 vault) external view returns (bytes32 ilk);
@@ -60,6 +60,9 @@ interface IAsset {
 }
 
 contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
+    uint256 private constant MIN_RATIO = 1 * WAD;
+    uint256 private constant MAX_RATIO = 100 * WAD;
+
     event SetRatioTarget(uint256 ratioTarget);
     event SetRatioTrigger(uint256 ratioTrigger);
     event AdapterSetup(
@@ -187,6 +190,11 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         uint256 _ratioTrigger,
         uint256 _vault
     ) {
+        require(
+            ratioOk(_ratioTarget) && ratioOk(_ratioTrigger),
+            "DebtPosition: Invalid Ratio"
+        );
+
         bytes32 _ilk = ICDPManager(_cdpManager).ilks(_vault);
         address _urnHandler = ICDPManager(_cdpManager).urns(_vault);
         address _vat = ICDPManager(_cdpManager).vat();
@@ -226,6 +234,7 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     /// @param _ratio Target collateralization ratio for the vault.
     /// @notice Can only be called by owner.
     function setRatioTarget(uint256 _ratio) external onlyOwner {
+        require(ratioOk(_ratio), "DebtPosition: Invalid Ratio");
         ratioTarget = _ratio;
         emit SetRatioTarget(ratioTarget);
     }
@@ -234,6 +243,7 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     /// @param _ratio The ratio below which debt repayment can be triggered.
     /// @notice Can only be called by owner.
     function setRatioTrigger(uint256 _ratio) external onlyOwner {
+        require(ratioOk(_ratio), "DebtPosition: Invalid Ratio");
         ratioTrigger = _ratio;
         emit SetRatioTrigger(ratioTrigger);
     }
@@ -266,30 +276,24 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         //     uint256 mat;  // Liquidation ratio [ray]
         // }
 
-        return _div(collateralValue(), debtValue());
+        return _div_wad(collateralValue(), debtValue());
     }
 
     /// @notice returns the amount of asset that should be repaid to
     /// bring vault to target ratio.
-    /// @return amount fixed point scaled to asset decimals
+    /// @return amount fixed point wad (18 decimals)
     function delta() external view override returns (uint256) {
         // r = (c * s * l) / d
-        uint256 debtTarget = _div(collateralValue(), ratioTarget);
+        uint256 debtTarget = _div_wad(collateralValue(), ratioTarget);
 
-        // delta is in wad -> 18 decimal places
-        uint256 _delta = debtValue() - debtTarget;
-
-        uint256 decimals = IAsset(asset).decimals();
-        assert(decimals <= 18);
-
-        // scale down to asset decimals
-        return _delta * 10 ** (18 - decimals);
+        return debtValue() - debtTarget;
     }
 
     /// @dev Returns whether the current debt positions needs rebelance.
     function needsRebalancing() public view override returns (bool) {
+        assert(ratioOk(ratioTrigger) && ratioOk(ratioTarget));
         require(
-            ratioTrigger != 0 && ratioTarget != 0 && ratioTrigger < ratioTarget,
+            ratioTrigger < ratioTarget,
             "DebtPosition: Incorrect Configuration"
         );
 
@@ -350,9 +354,9 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         // mat -> the liquidation ratio
         (, uint256 mat) = ISpotter(spotter).ilks(ilk);
 
-        // multiply: wad . ray -> wad
-        // equivalent to: _scaleDown(_mul(_mul(_scaleUp(ink), spot), mat))
-        return _mul(_mul(ink, spot), mat);
+        // multiply a wad and ray yields a wad
+        // equivalent to: _scaleDown(_mul_ray(_mul_ray(_scaleUp(ink), spot), mat))
+        return _mul_ray(_mul_ray(ink, spot), mat);
     }
 
     /// @notice calculates total outstanding debt
@@ -368,18 +372,23 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         // art -> outstanding stablecoin debt
         (, uint256 art) = IVat(vat).urns(ilk, urnHandler);
 
-        // multiply: wad . ray -> wad
-        // equivalent to: _scaleDown(_mul(_scaleUp(art), rate))
-        return _mul(art, rate);
+        // multiply a wad and ray yields a wad
+        // equivalent to: _scaleDown(_mul_ray(_scaleUp(art), rate))
+        return _mul_ray(art, rate);
     }
 
     /// @dev multiplies two fixed point integers in ray scale
-    function _mul(uint256 x, uint256 y) internal pure returns (uint256) {
+    function _mul_ray(uint256 x, uint256 y) private pure returns (uint256) {
         return (x * y) / RAY;
     }
 
-    /// @dev divides two fixed point integers in ray scale
-    function _div(uint256 x, uint256 y) internal pure returns (uint256) {
-        return (x * RAY) / y;
+    /// @dev divides two fixed point integers in wad scale
+    function _div_wad(uint256 x, uint256 y) private pure returns (uint256) {
+        return (x * WAD) / y;
+    }
+
+    /// @dev Ensures provided ratio is within expected value
+    function ratioOk(uint256 _ratio) private pure returns (bool) {
+        return _ratio >= MIN_RATIO && _ratio <= MAX_RATIO;
     }
 }
