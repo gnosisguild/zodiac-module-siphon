@@ -55,10 +55,6 @@ interface IVat {
         );
 }
 
-interface IAsset {
-    function decimals() external view returns (uint256);
-}
-
 contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     uint256 private constant MIN_RATIO = 1 * WAD;
     uint256 private constant MAX_RATIO = 100 * WAD;
@@ -387,7 +383,7 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         return (x * WAD) / y;
     }
 
-    /// @dev Ensures provided ratio is within expected value
+    /// @dev Ensures provided ratio is within expected range
     function ratioOk(uint256 _ratio) private pure returns (bool) {
         return _ratio >= MIN_RATIO && _ratio <= MAX_RATIO;
     }
