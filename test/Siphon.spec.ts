@@ -9,6 +9,10 @@ import { SafeMock__factory } from "../typechain-types";
 import { fork, forkReset } from "./lp/setup";
 import { execPopulatedTransaction, takeover } from "./safe";
 import { parseUnits } from "ethers/lib/utils";
+import {
+  CONVEX_REWARDS,
+  CURVE_POOL_DEPOSIT,
+} from "./lp/curve-lending-pool/pool";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 
@@ -29,8 +33,8 @@ describe("Siphon", async () => {
       "ConvexCompoundAdapter"
     );
     const liquidityAdapter = await LiquidityAdapter.deploy(
-      "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
-      "0xf34DFF761145FF0B05e917811d488B441F33a968",
+      CURVE_POOL_DEPOSIT,
+      CONVEX_REWARDS,
       0,
       1,
       GNO_SAFE,

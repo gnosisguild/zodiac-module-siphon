@@ -16,4 +16,6 @@ interface CToken {
     function exchangeRateCurrent() external returns (uint256);
 
     function underlying() external view returns (address);
+
+    function approve(address to, uint256 amount) external;
 }

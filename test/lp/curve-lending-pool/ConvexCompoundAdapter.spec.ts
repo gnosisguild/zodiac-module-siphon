@@ -18,6 +18,7 @@ import { expect } from "chai";
 import { TransactionStructOutput } from "../../../typechain-types/contracts/IDebtPosition";
 import { parseUnits } from "ethers/lib/utils";
 import { getCTokens } from "../constants";
+import { executeLeaveStake } from "./pool";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 const CURVE_LP_TOKEN = "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2";
@@ -316,22 +317,6 @@ async function executeFlushERC20(
   const tx = await erc20.populateTransaction.transfer(
     "0x0000000000000000000000000000000000000002",
     balance ? balance : await erc20.balanceOf(safeAddress)
-  );
-
-  await execPopulatedTransaction(safeAddress, tx, signer);
-}
-
-async function executeLeaveStake(safeAddress: string, balance?: BigNumberish) {
-  const [signer] = await hre.ethers.getSigners();
-
-  const rewards = MockRewardPool__factory.connect(
-    CONVEX_REWARDS_POOL,
-    hre.ethers.provider
-  );
-
-  const tx = await rewards.populateTransaction.withdrawAndUnwrap(
-    balance ? balance : await rewards.balanceOf(safeAddress),
-    false
   );
 
   await execPopulatedTransaction(safeAddress, tx, signer);

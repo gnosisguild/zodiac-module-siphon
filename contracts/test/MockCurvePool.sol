@@ -26,4 +26,19 @@ interface CurvePool {
         int128 j,
         uint256 dx
     ) external view returns (uint256);
+
+    function remove_liquidity(
+        uint256 _amount,
+        uint256[2] memory min_amounts
+    ) external;
+
+    function remove_liquidity_imbalance(
+        uint256[2] memory amounts,
+        uint256 max_burn_amount
+    ) external;
+
+    function add_liquidity(
+        uint256[2] memory amounts,
+        uint256 min_mint_amount
+    ) external;
 }
