@@ -2,12 +2,13 @@ import { expect } from "chai";
 import { BigNumber } from "ethers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import hre from "hardhat";
+import { parseUnits } from "ethers/lib/utils";
 
 const AddressOne = "0x0000000000000000000000000000000000000001";
-const ratioTarget = 4586919454964052515806212538n;
-const ratioTrigger = 4211626045012448219058431512n;
-const expectedRatio = BigNumber.from(4169926777240047741642011399n);
-const expectedDelta = BigNumber.from(2479023057692998402742223n);
+const ratioTarget = parseUnits("4.6", 18);
+const ratioTrigger = parseUnits("4.2", 18);
+const expectedRatio = BigNumber.from(4169926777240047741n);
+const expectedDelta = BigNumber.from(2549516476717575585295379n);
 
 describe("MakerVaultAdapter", async () => {
   async function baseSetup() {
@@ -114,6 +115,7 @@ describe("MakerVaultAdapter", async () => {
     });
     it("Sets ratioTrigger", async () => {
       const { adapter } = await loadFixture(baseSetup);
+
       await adapter.setRatioTrigger(42);
       const ratioTrigger = await adapter.ratioTrigger();
       expect(ratioTrigger).to.equal(42);
