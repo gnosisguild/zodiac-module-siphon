@@ -92,18 +92,15 @@ describe("MakerVaultAdapter", async () => {
       const { adapter } = await loadFixture(baseSetup);
 
       await adapter.transferOwnership(AddressOne);
-      expect(adapter.setRatioTarget(parseUnits("42", 18))).to.be.revertedWith(
+      expect(adapter.setRatioTarget(42)).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
     });
     it("Sets ratioTarget", async () => {
       const { adapter } = await loadFixture(baseSetup);
-
-      const nextRatio = parseUnits("1", 18);
-
-      await adapter.setRatioTarget(nextRatio);
+      await adapter.setRatioTarget(42);
       const ratioTarget = await adapter.ratioTarget();
-      expect(ratioTarget).to.equal(nextRatio);
+      expect(ratioTarget).to.equal(42);
     });
   });
 
@@ -111,21 +108,17 @@ describe("MakerVaultAdapter", async () => {
     it("Can only be called by owner", async () => {
       const { adapter } = await loadFixture(baseSetup);
 
-      const nextRatio = parseUnits("1", 18);
-
       await adapter.transferOwnership(AddressOne);
-      expect(adapter.setRatioTrigger(nextRatio)).to.be.revertedWith(
+      expect(adapter.setRatioTrigger(42)).to.be.revertedWith(
         "Ownable: caller is not the owner"
       );
     });
     it("Sets ratioTrigger", async () => {
       const { adapter } = await loadFixture(baseSetup);
 
-      const nextRatio = parseUnits("1", 18);
-
-      await adapter.setRatioTrigger(nextRatio);
+      await adapter.setRatioTrigger(42);
       const ratioTrigger = await adapter.ratioTrigger();
-      expect(ratioTrigger).to.equal(nextRatio);
+      expect(ratioTrigger).to.equal(42);
     });
   });
 

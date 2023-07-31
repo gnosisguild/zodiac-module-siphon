@@ -186,11 +186,6 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
         uint256 _ratioTrigger,
         uint256 _vault
     ) {
-        require(
-            ratioOk(_ratioTarget) && ratioOk(_ratioTrigger),
-            "DebtPosition: Invalid Ratio"
-        );
-
         bytes32 _ilk = ICDPManager(_cdpManager).ilks(_vault);
         address _urnHandler = ICDPManager(_cdpManager).urns(_vault);
         address _vat = ICDPManager(_cdpManager).vat();
@@ -230,7 +225,6 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     /// @param _ratio Target collateralization ratio for the vault.
     /// @notice Can only be called by owner.
     function setRatioTarget(uint256 _ratio) external onlyOwner {
-        require(ratioOk(_ratio), "DebtPosition: Invalid Ratio");
         ratioTarget = _ratio;
         emit SetRatioTarget(ratioTarget);
     }
@@ -239,7 +233,6 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     /// @param _ratio The ratio below which debt repayment can be triggered.
     /// @notice Can only be called by owner.
     function setRatioTrigger(uint256 _ratio) external onlyOwner {
-        require(ratioOk(_ratio), "DebtPosition: Invalid Ratio");
         ratioTrigger = _ratio;
         emit SetRatioTrigger(ratioTrigger);
     }
@@ -287,9 +280,8 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
 
     /// @dev Returns whether the current debt positions needs rebelance.
     function needsRebalancing() public view override returns (bool) {
-        assert(ratioOk(ratioTrigger) && ratioOk(ratioTarget));
         require(
-            ratioTrigger < ratioTarget,
+            ratioTrigger != 0 && ratioTarget != 0 && ratioTrigger < ratioTarget,
             "DebtPosition: Incorrect Configuration"
         );
 
@@ -381,10 +373,5 @@ contract MakerVaultAdapter is OwnableUpgradeable, IDebtPosition {
     /// @dev divides two fixed point integers in wad scale
     function _div_wad(uint256 x, uint256 y) private pure returns (uint256) {
         return (x * WAD) / y;
-    }
-
-    /// @dev Ensures provided ratio is within expected range
-    function ratioOk(uint256 _ratio) private pure returns (bool) {
-        return _ratio >= MIN_RATIO && _ratio <= MAX_RATIO;
     }
 }
