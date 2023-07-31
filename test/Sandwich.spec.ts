@@ -245,11 +245,9 @@ describe("Sandwich", async () => {
     // required capital 290K dai
     expect((await debtAdapter.delta()).div(oneDAI)).to.equal(290752);
 
-    // open sandwich - move the pool such that withdraw is possible
+    // open sandwich - move the pool up making price less attractive for Siphon
     const amountOutDAI = oneDAI.mul(50000000); // 50M
     await swapOutDAI(amountOutDAI, attacker);
-    //expect(await liquidityAdapter.price()).to.equal(parseUnits("0.99", 18));
-
     expect(await debtAdapter.needsRebalancing()).to.equal(true);
     await siphon.siphon("compound-tube");
     expect(await debtAdapter.needsRebalancing()).to.equal(false);
