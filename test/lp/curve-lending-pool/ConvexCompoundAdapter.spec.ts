@@ -18,11 +18,14 @@ import { expect } from "chai";
 import { TransactionStructOutput } from "../../../typechain-types/contracts/IDebtPosition";
 import { parseUnits } from "ethers/lib/utils";
 import { getCTokens } from "../constants";
-import { executeLeaveStake } from "./pool";
+import {
+  CONVEX_REWARDS,
+  CURVE_POOL_DEPOSIT,
+  CURVE_POOL_TOKEN,
+  executeLeaveStake,
+} from "./pool";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
-const CURVE_LP_TOKEN = "0x845838DF265Dcd2c412A1Dc9e959c7d08537f8a2";
-const CONVEX_REWARDS_POOL = "0xf34DFF761145FF0B05e917811d488B441F33a968";
 
 describe("ConvexCompoundAdapter", async () => {
   before(async () => {
@@ -43,8 +46,8 @@ describe("ConvexCompoundAdapter", async () => {
       "ConvexCompoundAdapter"
     );
     const adapter = await Adapter.deploy(
-      "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
-      "0xf34DFF761145FF0B05e917811d488B441F33a968",
+      CURVE_POOL_DEPOSIT,
+      CONVEX_REWARDS,
       0,
       1,
       GNO_SAFE,
@@ -55,10 +58,13 @@ describe("ConvexCompoundAdapter", async () => {
     await executeFlushERC20(GNO_SAFE, usdc.address);
 
     const rewards = MockRewardPool__factory.connect(
-      CONVEX_REWARDS_POOL,
+      CONVEX_REWARDS,
       hre.ethers.provider
     );
-    const lpToken = ERC20__factory.connect(CURVE_LP_TOKEN, hre.ethers.provider);
+    const lpToken = ERC20__factory.connect(
+      CURVE_POOL_TOKEN,
+      hre.ethers.provider
+    );
 
     return { adapter, rewards, lpToken };
   }
