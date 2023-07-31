@@ -94,7 +94,7 @@ contract ConvexCompoundAdapter is OwnableUpgradeable, ILiquidityPosition {
      *
      * NOTE: as 18 decimal fixed point
      */
-    uint256 public minAcceptablePrice;
+    uint256 public maxAcceptablePrice;
 
     constructor(
         address _deposit,
@@ -102,7 +102,7 @@ contract ConvexCompoundAdapter is OwnableUpgradeable, ILiquidityPosition {
         int128 _indexOut,
         int128 _indexOther,
         address _investor,
-        uint256 _minAcceptablePrice
+        uint256 _maxAcceptablePrice
     ) {
         IERC20 _underlyingTokenOut = IERC20(
             ICurveDeposit(_deposit).underlying_coins(_indexOut)
@@ -127,7 +127,7 @@ contract ConvexCompoundAdapter is OwnableUpgradeable, ILiquidityPosition {
         scaleFactorOther = 10 ** (18 - _underlyingTokenOther.decimals());
 
         investor = _investor;
-        minAcceptablePrice = _minAcceptablePrice;
+        maxAcceptablePrice = _maxAcceptablePrice;
         _transferOwnership(_investor);
     }
 
@@ -144,7 +144,7 @@ contract ConvexCompoundAdapter is OwnableUpgradeable, ILiquidityPosition {
     }
 
     function assessPostWithdraw() public view override returns (bool) {
-        return price() > minAcceptablePrice;
+        return price() < maxAcceptablePrice;
     }
 
     function withdrawalInstructions(
@@ -202,10 +202,10 @@ contract ConvexCompoundAdapter is OwnableUpgradeable, ILiquidityPosition {
         return total > cap ? cap : total;
     }
 
-    function setMinAcceptablePrice(
-        uint256 nextMinAcceptablePrice
+    function setMaxAcceptablePrice(
+        uint256 nextMaxAcceptablePrice
     ) external onlyOwner {
-        minAcceptablePrice = nextMinAcceptablePrice;
+        maxAcceptablePrice = nextMaxAcceptablePrice;
     }
 
     function _encodeUnstake(

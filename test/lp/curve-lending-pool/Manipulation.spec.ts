@@ -10,8 +10,6 @@ import {
   addLiquidityUpTo,
   executeLeaveStake,
   getPoolPercs,
-  getTokens,
-  moveERC20,
   swapInDAI,
   swapInUSDC,
 } from "./pool";
@@ -21,6 +19,7 @@ import { BigNumber } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { TransactionStructOutput } from "../../../typechain-types/contracts/IDebtPosition";
 import { expect } from "chai";
+import { getTokens, takeoverERC20 } from "../../setup";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 
@@ -43,8 +42,8 @@ describe("ConvexCompoundAdapter", async () => {
       const usdcWhale = "0x51eDF02152EBfb338e03E30d65C15fBf06cc9ECC";
       const daiWhale = "0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8";
 
-      await moveERC20(daiWhale, signer.address, dai.address);
-      await moveERC20(usdcWhale, signer.address, usdc.address);
+      await takeoverERC20(daiWhale, signer.address, dai.address);
+      await takeoverERC20(usdcWhale, signer.address, usdc.address);
       await executeLeaveStake(GNO_SAFE);
 
       const Adapter = await hre.ethers.getContractFactory(

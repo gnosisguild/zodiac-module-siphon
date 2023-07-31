@@ -2,12 +2,18 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import hre from "hardhat";
 
 import { fork, forkReset } from "../setup";
-import { CurvePool__factory, ERC20__factory } from "../../../typechain-types";
+import { CurvePool__factory } from "../../../typechain-types";
 import { parseUnits } from "ethers/lib/utils";
 import { getCTokens } from "../constants";
 import { expect } from "chai";
-import { CURVE_POOL, getPoolPercs } from "./pool";
+import {
+  CONVEX_REWARDS,
+  CURVE_POOL,
+  CURVE_POOL_DEPOSIT,
+  getPoolPercs,
+} from "./pool";
 import { BigNumber } from "ethers";
+import { takeoverERC20 } from "../../setup";
 
 const GNO_SAFE = "0x849d52316331967b6ff1198e5e32a0eb168d039d";
 
@@ -28,15 +34,15 @@ describe("ConvexCompoundAdapter", async () => {
       const usdcWhale = "0x51eDF02152EBfb338e03E30d65C15fBf06cc9ECC";
       const daiWhale = "0x075e72a5eDf65F0A5f44699c7654C1a76941Ddc8";
 
-      await moveERC20(daiWhale, signer.address, dai.address);
-      await moveERC20(usdcWhale, signer.address, usdc.address);
+      await takeoverERC20(daiWhale, signer.address, dai.address);
+      await takeoverERC20(usdcWhale, signer.address, usdc.address);
 
       const Adapter = await hre.ethers.getContractFactory(
         "ConvexCompoundAdapter"
       );
       const adapter = await Adapter.deploy(
-        "0xeB21209ae4C2c9FF2a86ACA31E123764A3B6Bc06",
-        "0xf34DFF761145FF0B05e917811d488B441F33a968",
+        CURVE_POOL_DEPOSIT,
+        CONVEX_REWARDS,
         0,
         1,
         GNO_SAFE,
@@ -127,16 +133,6 @@ describe("ConvexCompoundAdapter", async () => {
       expect(price).to.equal(parseUnits("0.813246027", 18));
     });
   });
-
-  async function moveERC20(from: string, to: string, tokenAddress: string) {
-    const impersonator = await hre.ethers.getImpersonatedSigner(from);
-
-    const token = ERC20__factory.connect(tokenAddress, impersonator);
-
-    const receipt = await token.transfer(to, await token.balanceOf(from));
-
-    await receipt.wait();
-  }
 });
 
 async function injectDAI(amount: BigNumber) {

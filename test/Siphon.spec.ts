@@ -38,7 +38,7 @@ describe("Siphon", async () => {
       0,
       1,
       GNO_SAFE,
-      parseUnits("0.99", 18)
+      parseUnits("1", 18)
     );
 
     const DebtAdapter = await hre.ethers.getContractFactory(
