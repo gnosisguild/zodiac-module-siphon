@@ -15,15 +15,15 @@ const simulatePayment = async (): Promise<void> => {
       {
         forking: {
           jsonRpcUrl: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-          blockNumber: 15000000,
+          blockNumber: 17741542,
         },
       },
     ],
   });
 
-  // steal some ETH and Dai from a whale and send it to our safes.
-  const { getNamedAccounts } = hre;
-  const { daiWhale, gnosisDAO } = await getNamedAccounts();
+  const daiWhale = "0xc08a8a9f809107c5a7be6d90e315e4012c99f39a";
+  const gnosisDAO = "0x0DA0C3e52C977Ed3cBc641fF02DD271c3ED55aFe";
+
   await hre.network.provider.request({
     method: "hardhat_impersonateAccount",
     params: [daiWhale],
@@ -76,6 +76,7 @@ const simulatePayment = async (): Promise<void> => {
     "0x9759A6Ac90977b93B58547b4A71c78317f391A28", // daiJoin
     proxy, // dsProxy
     "0x82ecd135dce65fbc6dbdd0e4237e0af93ffd5038", // dsProxyActions
+    gnosisDAO,
     spotter.address, // spotter
     targetRatio, // ratio target
     triggerRatio, // ratio trigger

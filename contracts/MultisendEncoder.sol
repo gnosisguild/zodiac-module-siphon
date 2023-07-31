@@ -4,11 +4,14 @@ pragma solidity ^0.8.6;
 import "./Transaction.sol";
 
 abstract contract MultisendEncoder {
-    address internal multisend;
+    address internal constant multisend =
+        0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761;
 
-    function encodeMultisend(Transaction[] memory txs)
+    function encodeMultisend(
+        Transaction[] memory txs
+    )
         public
-        view
+        pure
         returns (
             address to,
             uint256 value,

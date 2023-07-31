@@ -1,10 +1,10 @@
+import "@typechain/hardhat";
+import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-waffle";
-import "solidity-coverage";
-import "hardhat-deploy";
-import "hardhat-gas-reporter";
+import "@nomicfoundation/hardhat-chai-matchers";
+
 import "hardhat-contract-sizer";
-import "@nomicfoundation/hardhat-foundry";
+import "hardhat-gas-reporter";
 
 import dotenv from "dotenv";
 import { HardhatUserConfig } from "hardhat/config";
@@ -48,7 +48,6 @@ const config: HardhatUserConfig = {
   paths: {
     artifacts: "build/artifacts",
     cache: "build/cache",
-    deploy: "src/deploy",
     sources: "contracts",
   },
   solidity: {
@@ -78,9 +77,6 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-      forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      },
     },
     mainnet: {
       ...sharedNetworkConfig,
@@ -102,12 +98,6 @@ const config: HardhatUserConfig = {
       ...sharedNetworkConfig,
       url: "https://rpc-mainnet.maticvigil.com",
     },
-  },
-  namedAccounts: {
-    deployer: 0,
-    BigWhale: 1,
-    daiWhale: "0xc08a8a9f809107c5a7be6d90e315e4012c99f39a",
-    gnosisDAO: "0x0DA0C3e52C977Ed3cBc641fF02DD271c3ED55aFe",
   },
   mocha: {
     timeout: 2000000,

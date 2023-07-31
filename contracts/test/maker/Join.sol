@@ -28,11 +28,7 @@ interface GemLike {
 
     function transfer(address, uint256) external returns (bool);
 
-    function transferFrom(
-        address,
-        address,
-        uint256
-    ) external returns (bool);
+    function transferFrom(address, address, uint256) external returns (bool);
 }
 
 interface DSTokenLike {
@@ -42,17 +38,9 @@ interface DSTokenLike {
 }
 
 interface VatLike {
-    function slip(
-        bytes32,
-        address,
-        int256
-    ) external;
+    function slip(bytes32, address, int256) external;
 
-    function move(
-        address,
-        address,
-        uint256
-    ) external;
+    function move(address, address, uint256) external;
 }
 
 /*
@@ -111,11 +99,7 @@ contract GemJoin {
     event Exit(address indexed usr, uint256 wad);
     event Cage();
 
-    constructor(
-        address vat_,
-        bytes32 ilk_,
-        address gem_
-    ) {
+    constructor(address vat_, bytes32 ilk_, address gem_) {
         wards[msg.sender] = 1;
         live = 1;
         vat = VatLike(vat_);
@@ -142,7 +126,7 @@ contract GemJoin {
     }
 
     function exit(address usr, uint256 wad) external {
-        require(wad <= 2**255, "GemJoin/overflow");
+        require(wad <= 2 ** 255, "GemJoin/overflow");
         vat.slip(ilk, msg.sender, -int256(wad));
         require(gem.transfer(usr, wad), "GemJoin/failed-transfer");
         emit Exit(usr, wad);
@@ -191,7 +175,7 @@ contract DaiJoin {
         emit Cage();
     }
 
-    uint256 constant ONE = 10**27;
+    uint256 constant ONE = 10 ** 27;
 
     function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require(y == 0 || (z = x * y) / y == x);

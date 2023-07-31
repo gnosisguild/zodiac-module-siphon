@@ -48,12 +48,9 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
             );
     }
 
-    function encodeExit(uint256 amountIn)
-        internal
-        view
-        override
-        returns (Transaction memory)
-    {
+    function encodeExit(
+        uint256 amountIn
+    ) internal view override returns (Transaction memory) {
         address linearPool = BoostedPoolHelper.findLinearPool(pool, tokenOut);
 
         address[] memory assets = new address[](3);
@@ -105,11 +102,9 @@ contract BoostedPoolAdapter is AbstractPoolAdapter {
             });
     }
 
-    function calculateExit(uint256 requestedAmountOut)
-        internal
-        override
-        returns (uint256 amountIn)
-    {
+    function calculateExit(
+        uint256 requestedAmountOut
+    ) internal override returns (uint256 amountIn) {
         (uint256 unstakedBPT, uint256 stakedBPT) = bptBalances();
 
         // For BoostedPools there's a difference between the nominal balance and

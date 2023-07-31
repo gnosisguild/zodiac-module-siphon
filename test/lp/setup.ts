@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { BigNumber, Contract } from "ethers";
-import hre, { ethers, getNamedAccounts } from "hardhat";
+import hre, { ethers } from "hardhat";
 
 import {
   DAI_ADDRESS,
@@ -13,6 +13,12 @@ import {
   USDC_WHALE,
   VAULT_ADDRESS,
 } from "./constants";
+import {
+  BoostedPoolHelperMock,
+  LinearPoolHelper,
+  StablePhantomPoolHelper,
+  StablePoolHelper,
+} from "../../typechain-types";
 
 export async function fork(blockNumber: number): Promise<void> {
   // Load environment variables.
@@ -40,8 +46,8 @@ export async function forkReset(): Promise<void> {
 }
 
 export async function fundWhaleWithStables(): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
+  const BigWhale = await signer.address;
 
   const dai = await fundWithERC20(DAI_ADDRESS, DAI_WHALE, BigWhale);
   const tether = await fundWithERC20(TETHER_ADDRESS, TETHER_WHALE, BigWhale);
@@ -56,8 +62,8 @@ export async function fundWhaleWithBpt(
   gaugeAddress: string,
   gaugeTopHolders: string[]
 ): Promise<void> {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
+  const BigWhale = await signer.address;
 
   for (let i = 0; i < gaugeTopHolders.length; i++) {
     await fundWhale(gaugeAddress, gaugeTopHolders[i]);
@@ -91,7 +97,7 @@ async function fundWhale(
   tokenAddress: string,
   from: string
 ): Promise<Contract> {
-  const { BigWhale } = await getNamedAccounts();
+  const BigWhale = await (await getWhaleSigner()).address;
 
   const token = await hre.ethers.getContractAt("ERC20", tokenAddress);
 
@@ -108,8 +114,8 @@ async function fundWhale(
 }
 
 async function fundWithEth(account: string) {
-  const { BigWhale } = await getNamedAccounts();
-  const signer = hre.ethers.provider.getSigner(BigWhale);
+  const signer = await getWhaleSigner();
+  const BigWhale = await signer.address;
 
   const tx = {
     from: BigWhale,
@@ -118,4 +124,90 @@ async function fundWithEth(account: string) {
   };
 
   await signer.sendTransaction(tx);
+}
+
+export type BalancerLibs = {
+  linearPoolHelper: LinearPoolHelper;
+  stablePoolHelper: StablePoolHelper;
+  stablePhantomPoolHelper: StablePhantomPoolHelper;
+  boostedPoolHelper: BoostedPoolHelperMock;
+  vaultQueryHelper: Contract;
+};
+
+export async function deployBalancerLibs() {
+  // const Errors = await hre.ethers.getContractFactory("Errors");
+  // const errors = await Errors.deploy();
+
+  // const Math = await hre.ethers.getContractFactory("Math");
+  // const math = await Math.deploy();
+
+  // const LogExpMath = await hre.ethers.getContractFactory("LogExpMath");
+  // const logExpMath = await LogExpMath.deploy();
+
+  // const FixedPoint = await hre.ethers.getContractFactory("FixedPoint");
+  // const fixedPoint = await FixedPoint.deploy();
+
+  // const LinearMath = await hre.ethers.getContractFactory("LinearMath");
+  // const linearMath = await LinearMath.deploy();
+
+  // const StableMath = await hre.ethers.getContractFactory("StableMath");
+  // const stableMath = await StableMath.deploy();
+
+  const Utils = await hre.ethers.getContractFactory("Utils");
+  const utils = await Utils.deploy();
+
+  const StablePoolHelper = await hre.ethers.getContractFactory(
+    "StablePoolHelper",
+    {
+      libraries: { Utils: utils.address },
+    }
+  );
+  const stablePoolHelper = await StablePoolHelper.deploy();
+
+  const LinearPoolHelper = await hre.ethers.getContractFactory(
+    "LinearPoolHelper",
+    {
+      libraries: { Utils: utils.address },
+    }
+  );
+  const linearPoolHelper = await LinearPoolHelper.deploy();
+
+  const StablePhantomPoolHelper = await hre.ethers.getContractFactory(
+    "StablePhantomPoolHelper",
+    {
+      libraries: { Utils: utils.address },
+    }
+  );
+  const stablePhantomPoolHelper = await StablePhantomPoolHelper.deploy();
+
+  const BoostedPoolHelper = await hre.ethers.getContractFactory(
+    "BoostedPoolHelper",
+    {
+      libraries: {
+        Utils: utils.address,
+        LinearPoolHelper: linearPoolHelper.address,
+        StablePhantomPoolHelper: stablePhantomPoolHelper.address,
+      },
+    }
+  );
+  const boostedPoolHelper = await BoostedPoolHelper.deploy();
+
+  const VaultQueryHelper = await hre.ethers.getContractFactory(
+    "VaultQueryHelper"
+  );
+  const vaultQueryHelper = await VaultQueryHelper.deploy();
+
+  return {
+    utils,
+    linearPoolHelper,
+    stablePoolHelper,
+    stablePhantomPoolHelper,
+    boostedPoolHelper,
+    vaultQueryHelper,
+  };
+}
+
+export async function getWhaleSigner() {
+  const [, whaleSigner] = await hre.ethers.getSigners();
+  return whaleSigner;
 }

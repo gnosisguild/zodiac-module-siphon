@@ -82,34 +82,29 @@ contract BoostedPoolHelperMock {
             );
     }
 
-    function calcPrices(address pool)
-        public
-        returns (address[] memory, uint256[] memory)
-    {
+    function calcPrices(
+        address pool
+    ) public returns (address[] memory, uint256[] memory) {
         return BoostedPoolHelper.calcPrices(pool);
     }
 
-    function nominals(address pool)
-        public
-        view
-        returns (address[] memory, uint256[] memory)
-    {
+    function nominals(
+        address pool
+    ) public view returns (address[] memory, uint256[] memory) {
         return BoostedPoolHelper.nominalBalances(pool);
     }
 
-    function findLinearPool(address pool, address mainToken)
-        public
-        view
-        returns (address)
-    {
+    function findLinearPool(
+        address pool,
+        address mainToken
+    ) public view returns (address) {
         return BoostedPoolHelper.findLinearPool(pool, mainToken);
     }
 
-    function liquidStableBalance(address pool, address tokenOut)
-        public
-        view
-        returns (uint256)
-    {
+    function liquidStableBalance(
+        address pool,
+        address tokenOut
+    ) public view returns (uint256) {
         return BoostedPoolHelper.liquidStableBalance(pool, tokenOut);
     }
 }

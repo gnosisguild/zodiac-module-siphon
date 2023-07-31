@@ -131,7 +131,9 @@ library StablePhantomPoolHelper {
             );
     }
 
-    function query(address _pool)
+    function query(
+        address _pool
+    )
         private
         view
         returns (

@@ -12,8 +12,7 @@ interface IDebtPosition {
 
     function needsRebalancing() external view returns (bool);
 
-    function paymentInstructions(uint256 amount)
-        external
-        view
-        returns (Transaction[] memory);
+    function paymentInstructions(
+        uint256 amount
+    ) external view returns (Transaction[] memory);
 }

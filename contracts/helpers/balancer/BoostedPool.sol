@@ -157,10 +157,9 @@ library BoostedPoolHelper {
             );
     }
 
-    function calcPrices(address pool)
-        public
-        returns (address[] memory, uint256[] memory)
-    {
+    function calcPrices(
+        address pool
+    ) public returns (address[] memory, uint256[] memory) {
         (address[] memory tokens, uint256[] memory balances) = nominalBalances(
             pool
         );
@@ -187,7 +186,7 @@ library BoostedPoolHelper {
         address stable1,
         address stable2
     ) public returns (uint256) {
-        uint256 amountIn = 1000 * 10**ERC20(stable1).decimals();
+        uint256 amountIn = 1000 * 10 ** ERC20(stable1).decimals();
         uint256 amountOut = queryStableOutGivenStableIn(
             pool,
             stable1,
@@ -202,7 +201,9 @@ library BoostedPoolHelper {
             );
     }
 
-    function findLinearPools(address pool)
+    function findLinearPools(
+        address pool
+    )
         public
         view
         returns (address[] memory linearPools, uint256[] memory linearBalances)
@@ -223,11 +224,10 @@ library BoostedPoolHelper {
         }
     }
 
-    function findLinearPool(address pool, address mainToken)
-        public
-        view
-        returns (address)
-    {
+    function findLinearPool(
+        address pool,
+        address mainToken
+    ) public view returns (address) {
         (address[] memory linearPools, ) = findLinearPools(pool);
         for (uint256 i = 0; i < linearPools.length; i++) {
             if (ILinearPool(linearPools[i]).getMainToken() == mainToken) {
@@ -238,7 +238,9 @@ library BoostedPoolHelper {
         revert("findLinearPool: Not found");
     }
 
-    function nominalBalances(address _pool)
+    function nominalBalances(
+        address _pool
+    )
         internal
         view
         returns (address[] memory stables, uint256[] memory balances)
@@ -258,11 +260,10 @@ library BoostedPoolHelper {
         }
     }
 
-    function liquidStableBalance(address pool, address stable)
-        public
-        view
-        returns (uint256)
-    {
+    function liquidStableBalance(
+        address pool,
+        address stable
+    ) public view returns (uint256) {
         address linearPool = findLinearPool(pool, stable);
         return LinearPoolHelper.liquidStableBalance(linearPool);
     }
